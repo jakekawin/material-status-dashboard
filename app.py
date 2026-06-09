@@ -397,9 +397,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ─── AUTO REFRESH ────────────────────────────────────────────────────────────
+# Use HTML meta-refresh (non-blocking) instead of time.sleep()
 if auto_refresh:
-    elapsed = (datetime.now() - st.session_state.last_refresh).total_seconds()
-    remaining = max(1, 30 - int(elapsed))
-    time.sleep(remaining)
-    load_data.clear()
-    st.rerun()
+    st.markdown('<meta http-equiv="refresh" content="30">', unsafe_allow_html=True)
