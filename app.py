@@ -105,6 +105,109 @@ def load_data():
     return df
 
 
+def parse_excel_for_import(excel_file) -> tuple:
+    """Parse uploaded Excel, return (df, errors)."""
+    errors = []
+    try:
+        xls = pd.ExcelFile(excel_file)
+    except Exception as e:
+        return None, [f"ไม่สามารถอ่านไฟล์ได้: {e}"]
+
+    required_sheets = ["RS1-2","RS3-4","RS5-6","RS7-8"]
+    missing = [s for s in required_sheets if s not in xls.sheet_names]
+    if missing:
+        return None, [f"ไม่พบ sheet: {', '.join(missing)}"]
+
+    all_rows = []
+    group_starts = [1, 6, 11, 16]
+    for sheet in required_sheets:
+        df_raw = pd.read_excel(excel_file, sheet_name=sheet, header=None)
+        for gs in group_starts:
+            group_header = str(df_raw.iloc[1, gs]).strip() if gs < df_raw.shape[1] else ""
+            if not group_header or group_header == "nan":
+                continue
+            parts = group_header.split("-")
+            riser  = parts[0] if len(parts) >= 1 else ""
+            system = parts[1] if len(parts) >= 2 else ""
+            for row_idx in range(3, len(df_raw)):
+                row = df_raw.iloc[row_idx]
+                if gs >= len(row): continue
+                item_no = row.iloc[gs]
+                if pd.isna(item_no) or str(item_no).strip() == "": continue
+                recv = row.iloc[gs+3] if gs+3 < len(row) else ""
+                work = row.iloc[gs+4] if gs+4 < len(row) else ""
+                all_rows.append({
+                    "Riser":            str(riser).strip(),
+                    "System":           str(system).strip(),
+                    "ITEM No.":         str(int(item_no)),
+                    "Size":             str(row.iloc[gs+1]).strip() if not pd.isna(row.iloc[gs+1]) else "",
+                    "Material":         str(row.iloc[gs+2]).strip() if not pd.isna(row.iloc[gs+2]) else "",
+                    "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),
+                    "Work Status":      "" if pd.isna(work) else str(work).strip(),
+                })
+    return pd.DataFrame(all_rows), errors
+
+
+def validate_and_diff(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> tuple:
+    """Return (changes_df, warnings). Changes = rows where Recv/Work status differs."""
+    warnings = []
+    key = ["Riser","System","ITEM No."]
+
+    # Check structure match
+    sheet_keys = set(zip(df_sheet["Riser"], df_sheet["System"], df_sheet["ITEM No."]))
+    excel_keys = set(zip(df_excel["Riser"], df_excel["System"], df_excel["ITEM No."]))
+    only_excel = excel_keys - sheet_keys
+    only_sheet = sheet_keys - excel_keys
+    if only_excel:
+        warnings.append(f"⚠️ {len(only_excel)} items ใน Excel ที่ไม่มีใน Sheet (จะถูกข้าม)")
+    if only_sheet:
+        warnings.append(f"⚠️ {len(only_sheet)} items ใน Sheet ที่ไม่มีใน Excel (จะไม่ถูกแตะต้อง)")
+
+    # Diff: merge on key
+    merged = df_sheet[key + ["Receiving Status","Work Status"]].merge(
+        df_excel[key + ["Receiving Status","Work Status"]],
+        on=key, suffixes=("_เก่า","_ใหม่"), how="inner"
+    )
+    changed = merged[
+        (merged["Receiving Status_เก่า"] != merged["Receiving Status_ใหม่"]) |
+        (merged["Work Status_เก่า"]      != merged["Work Status_ใหม่"])
+    ].copy()
+    changed.columns = ["Riser","System","ITEM No.",
+                        "Receiving Status (เก่า)","Work Status (เก่า)",
+                        "Receiving Status (ใหม่)","Work Status (ใหม่)"]
+    return changed.reset_index(drop=True), warnings
+
+
+def do_import(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> int:
+    """Batch-update Receiving Status & Work Status in Google Sheets."""
+    gc = get_gc()
+    sh = gc.open(SHEET_NAME)
+    ws = sh.worksheet("Data")
+
+    key = ["Riser","System","ITEM No."]
+    df_sheet_idx = df_sheet[key].copy()
+    df_sheet_idx["_idx"] = df_sheet_idx.index
+
+    merged = df_sheet_idx.merge(
+        df_excel[key + ["Receiving Status","Work Status"]],
+        on=key, how="inner"
+    )
+
+    updates = []
+    for _, row in merged.iterrows():
+        gsheet_row = int(row["_idx"]) + 2   # +1 header, +1 for 1-based
+        updates.append({
+            "range": f"F{gsheet_row}:G{gsheet_row}",
+            "values": [[row["Receiving Status"], row["Work Status"]]]
+        })
+
+    for i in range(0, len(updates), 100):   # batch in chunks of 100
+        ws.batch_update(updates[i:i+100])
+
+    load_data.clear()
+    return len(updates)
+
+
 def generate_excel_report(df: pd.DataFrame, summary_df: pd.DataFrame) -> bytes:
     """Generate Excel report with two sheets: Summary and Detail."""
     output = io.BytesIO()
@@ -430,6 +533,48 @@ for riser in sorted(risers_in_view):
                     disp.style.apply(highlight_row, axis=1),
                     use_container_width=True, height=min(200, len(disp)*36+40)
                 )
+
+# ─── IMPORT FROM EXCEL ───────────────────────────────────────────────────────
+if st.session_state.authenticated:
+    st.markdown('<div class="section-header">📤 Import จาก Excel (อัพเดต Receiving/Work Status)</div>', unsafe_allow_html=True)
+
+    uploaded_file = st.file_uploader(
+        "อัพโหลดไฟล์ Excel (ต้องมี sheet: RS1-2, RS3-4, RS5-6, RS7-8)",
+        type=["xlsx"], key="import_uploader"
+    )
+
+    if uploaded_file:
+        with st.spinner("กำลังตรวจสอบไฟล์..."):
+            df_excel, parse_errors = parse_excel_for_import(uploaded_file)
+
+        if parse_errors:
+            for e in parse_errors:
+                st.error(e)
+        else:
+            changes_df, imp_warnings = validate_and_diff(df_all, df_excel)
+
+            # Show warnings
+            for w in imp_warnings:
+                st.warning(w)
+
+            # Structure check summary
+            col_ok1, col_ok2 = st.columns(2)
+            col_ok1.metric("Items ใน Excel", len(df_excel))
+            col_ok2.metric("Items ใน Google Sheet", len(df_all))
+
+            if len(changes_df) == 0:
+                st.success("✅ ข้อมูลตรงกันทั้งหมด — ไม่มีการเปลี่ยนแปลง")
+            else:
+                st.info(f"พบ **{len(changes_df)} รายการ** ที่ Receiving Status หรือ Work Status เปลี่ยนแปลง:")
+                st.dataframe(changes_df, use_container_width=True, height=min(350, len(changes_df)*36+50))
+
+                st.warning("⚠️ กด **ยืนยัน Import** เพื่ออัพเดต Google Sheets — ไม่สามารถ undo ได้")
+                if st.button("✅ ยืนยัน Import", type="primary", use_container_width=False):
+                    with st.spinner("กำลัง import..."):
+                        n_updated = do_import(df_all, df_excel)
+                    st.success(f"✓ อัพเดต {n_updated} รายการสำเร็จ!")
+                    time.sleep(1)
+                    st.rerun()
 
 # ─── FOOTER ──────────────────────────────────────────────────────────────────
 st.markdown(f"""
