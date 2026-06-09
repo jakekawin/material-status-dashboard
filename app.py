@@ -89,7 +89,7 @@ def get_gc():
     return gspread.authorize(creds)
 
 
-@st.cache_data(ttl=30)  # refresh every 30 seconds
+@st.cache_data(ttl=300)  # refresh every 5 minutes
 def load_data():
     """Load all RS data from Google Sheets into a DataFrame."""
     gc = get_gc()
@@ -251,7 +251,7 @@ with st.sidebar:
     st.markdown("## 🔧 Controls")
 
     # Auto-refresh toggle
-    auto_refresh = st.toggle("Auto Refresh (30s)", value=True)
+    auto_refresh = st.toggle("Auto Refresh (5 min)", value=True)
     if st.button("🔄 Refresh Now"):
         load_data.clear()
         st.rerun()
@@ -587,4 +587,4 @@ st.markdown(f"""
 # ─── AUTO REFRESH ────────────────────────────────────────────────────────────
 # Use HTML meta-refresh (non-blocking) instead of time.sleep()
 if auto_refresh:
-    st.markdown('<meta http-equiv="refresh" content="30">', unsafe_allow_html=True)
+    st.markdown('<meta http-equiv="refresh" content="300">', unsafe_allow_html=True)
