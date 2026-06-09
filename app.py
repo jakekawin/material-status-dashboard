@@ -288,9 +288,9 @@ def color_done(val):
     return ""
 
 styled = summary.style \
-    .applymap(color_shortage, subset=["Shortage"]) \
-    .applymap(color_received, subset=["Received"]) \
-    .applymap(color_done,     subset=["Done"]) \
+    .map(color_shortage, subset=["Shortage"]) \
+    .map(color_received, subset=["Received"]) \
+    .map(color_done,     subset=["Done"]) \
     .set_properties(**{"text-align":"center"}) \
     .set_table_styles([{"selector":"th","props":[("background","#1F4E78"),("color","white"),("font-weight","bold"),("text-align","center")]}])
 
