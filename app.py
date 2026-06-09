@@ -135,10 +135,13 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Filters
+    # Filters — ดึง options จาก data จริง
     st.markdown("### 🔍 Filter")
-    sel_riser  = st.selectbox("Riser",  ["ALL"] + RISERS)
-    sel_system = st.selectbox("System", ["ALL"] + SYSTEMS)
+    _df_opts = load_data()
+    _risers  = sorted(_df_opts["Riser"].dropna().str.strip().unique().tolist())
+    _systems = sorted(_df_opts["System"].dropna().str.strip().unique().tolist())
+    sel_riser  = st.selectbox("Riser",  ["ALL"] + _risers)
+    sel_system = st.selectbox("System", ["ALL"] + _systems)
     sel_recv   = st.selectbox("Receiving Status", ["ALL","Received","Shortage","Blank"])
     sel_work   = st.selectbox("Work Status",      ["ALL","Done","Pending","Blank"])
 
@@ -176,6 +179,8 @@ except Exception as e:
 
 # ─── APPLY FILTERS ───────────────────────────────────────────────────────────
 df = df_all.copy()
+df["Riser"]  = df["Riser"].astype(str).str.strip()
+df["System"] = df["System"].astype(str).str.strip()
 
 if sel_riser != "ALL":
     df = df[df["Riser"] == sel_riser]
