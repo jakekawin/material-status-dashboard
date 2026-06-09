@@ -137,8 +137,8 @@ with st.sidebar:
 
     # Filters
     st.markdown("### 🔍 Filter")
-    sel_riser  = st.multiselect("Riser",  ["ALL"] + RISERS,  default=["ALL"])
-    sel_system = st.multiselect("System", ["ALL"] + SYSTEMS, default=["ALL"])
+    sel_riser  = st.selectbox("Riser",  ["ALL"] + RISERS)
+    sel_system = st.selectbox("System", ["ALL"] + SYSTEMS)
     sel_recv   = st.selectbox("Receiving Status", ["ALL","Received","Shortage","Blank"])
     sel_work   = st.selectbox("Work Status",      ["ALL","Done","Pending","Blank"])
 
@@ -177,10 +177,10 @@ except Exception as e:
 # ─── APPLY FILTERS ───────────────────────────────────────────────────────────
 df = df_all.copy()
 
-if "ALL" not in sel_riser:
-    df = df[df["Riser"].isin(sel_riser)]
-if "ALL" not in sel_system:
-    df = df[df["System"].isin(sel_system)]
+if sel_riser != "ALL":
+    df = df[df["Riser"] == sel_riser]
+if sel_system != "ALL":
+    df = df[df["System"] == sel_system]
 if sel_recv != "ALL":
     if sel_recv == "Blank":
         df = df[df["Receiving Status"] == ""]
