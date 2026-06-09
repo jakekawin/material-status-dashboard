@@ -88,11 +88,11 @@ def load_data():
     ws = sh.worksheet("Data")   # sheet ชื่อ "Data"
     records = ws.get_all_records()
     df = pd.DataFrame(records)
-    # ensure correct dtypes
-    for col in ["Receiving Status","Work Status"]:
+    # ensure correct dtypes — clean ALL key columns
+    for col in ["Riser","System","Receiving Status","Work Status"]:
         if col not in df.columns:
             df[col] = ""
-        df[col] = df[col].fillna("").astype(str).replace("nan","")
+        df[col] = df[col].fillna("").astype(str).str.strip().replace("nan","")
     return df
 
 
@@ -225,6 +225,26 @@ for col, label, value, color, bg in kpi_data:
         """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
+
+# ─── DEBUG (ซ่อนไว้ กด expand เพื่อดู) ─────────────────────────────────────
+with st.expander("🔍 Debug — ตรวจสอบ Filter & Data"):
+    c_a, c_b = st.columns(2)
+    with c_a:
+        st.markdown("**Filter ที่เลือก:**")
+        st.write(f"- Riser: `{sel_riser}`")
+        st.write(f"- System: `{sel_system}`")
+        st.write(f"- Receiving Status: `{sel_recv}`")
+        st.write(f"- Work Status: `{sel_work}`")
+        st.write(f"- แถวใน Google Sheets ทั้งหมด: **{len(df_all)}**")
+        st.write(f"- แถวหลัง Filter: **{total}**")
+    with c_b:
+        st.markdown("**ค่าจริงๆ ใน Google Sheets:**")
+        st.write("Riser:", sorted(df_all["Riser"].unique().tolist()))
+        st.write("System:", sorted(df_all["System"].unique().tolist()))
+        st.write("Receiving Status:", sorted(df_all["Receiving Status"].unique().tolist()))
+        st.write("Work Status:", sorted(df_all["Work Status"].unique().tolist()))
+    st.markdown("**ตัวอย่าง 5 แถวแรก:**")
+    st.dataframe(df_all.head(), use_container_width=True)
 
 # ─── CHARTS ──────────────────────────────────────────────────────────────────
 col_chart1, col_chart2 = st.columns(2)
@@ -378,6 +398,8 @@ st.markdown(f"""
 
 # ─── AUTO REFRESH ────────────────────────────────────────────────────────────
 if auto_refresh:
-    time.sleep(30)
+    elapsed = (datetime.now() - st.session_state.last_refresh).total_seconds()
+    remaining = max(1, 30 - int(elapsed))
+    time.sleep(remaining)
     load_data.clear()
     st.rerun()
