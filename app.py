@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import time
 import json
+import io
 
 # ─── PAGE CONFIG ────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -55,6 +56,14 @@ st.markdown("""
 
     .update-success { background: #E2EFDA; border: 1px solid #70AD47; border-radius: 8px; padding: 12px 16px; color: #375623; }
     .footer { text-align: center; color: #aaa; font-size: 11px; margin-top: 30px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+
+    @media print {
+        [data-testid="stSidebar"], [data-testid="stToolbar"],
+        button, .stButton, .stDownloadButton { display: none !important; }
+        .main-header { background: #1F4E78 !important; -webkit-print-color-adjust: exact; }
+        .kpi-card { border: 1px solid #ccc !important; break-inside: avoid; }
+        body { font-size: 11px; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,6 +103,17 @@ def load_data():
             df[col] = ""
         df[col] = df[col].fillna("").astype(str).str.strip().replace("nan","")
     return df
+
+
+def generate_excel_report(df: pd.DataFrame, summary_df: pd.DataFrame) -> bytes:
+    """Generate Excel report with two sheets: Summary and Detail."""
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        summary_df.to_excel(writer, index=False, sheet_name="Summary")
+        df[["Riser","System","ITEM No.","Size","Material","Receiving Status","Work Status"]].to_excel(
+            writer, index=False, sheet_name="Detail"
+        )
+    return output.getvalue()
 
 
 def save_row(row_index: int, recv_status: str, work_status: str):
@@ -163,6 +183,18 @@ with st.sidebar:
         if st.button("🔒 Lock"):
             st.session_state.authenticated = False
             st.rerun()
+
+    st.markdown("---")
+
+    # Report buttons
+    st.markdown("### 📄 Report")
+
+    # Excel download (populated after df is ready — placeholder here)
+    report_placeholder = st.empty()
+
+    # Print button
+    if st.button("🖨️ Print Page", use_container_width=True):
+        st.markdown("<script>window.print();</script>", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown(f"<div style='color:#999;font-size:11px'>Last refresh: {st.session_state.last_refresh.strftime('%H:%M:%S')}</div>", unsafe_allow_html=True)
@@ -320,6 +352,17 @@ styled = summary.style \
     .set_table_styles([{"selector":"th","props":[("background","#1F4E78"),("color","white"),("font-weight","bold"),("text-align","center")]}])
 
 st.dataframe(styled, use_container_width=True, height=350)
+
+# ─── FILL EXCEL DOWNLOAD BUTTON ──────────────────────────────────────────────
+excel_bytes = generate_excel_report(df, summary)
+fname = f"Material_Status_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+report_placeholder.download_button(
+    label="📥 Download Excel",
+    data=excel_bytes,
+    file_name=fname,
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    use_container_width=True,
+)
 
 # ─── DETAIL TABLE + EDIT ─────────────────────────────────────────────────────
 st.markdown('<div class="section-header">📝 Detail — Item List</div>', unsafe_allow_html=True)
