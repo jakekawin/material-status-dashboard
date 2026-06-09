@@ -153,6 +153,12 @@ def validate_and_diff(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> tuple:
     warnings = []
     key = ["Riser","System","ITEM No."]
 
+    # Normalize types before merge — convert ITEM No. to string in both
+    df_sheet = df_sheet.copy()
+    df_excel = df_excel.copy()
+    df_sheet["ITEM No."] = df_sheet["ITEM No."].astype(str).str.strip()
+    df_excel["ITEM No."] = df_excel["ITEM No."].astype(str).str.strip()
+
     # Check structure match
     sheet_keys = set(zip(df_sheet["Riser"], df_sheet["System"], df_sheet["ITEM No."]))
     excel_keys = set(zip(df_excel["Riser"], df_excel["System"], df_excel["ITEM No."]))
@@ -188,6 +194,11 @@ def do_import(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> int:
     ws = sh.worksheet("Data")
 
     key = ["Riser","System","ITEM No."]
+    df_sheet = df_sheet.copy()
+    df_excel = df_excel.copy()
+    df_sheet["ITEM No."] = df_sheet["ITEM No."].astype(str).str.strip()
+    df_excel["ITEM No."] = df_excel["ITEM No."].astype(str).str.strip()
+
     df_sheet_idx = df_sheet[key].copy()
     df_sheet_idx["_idx"] = df_sheet_idx.index
 
