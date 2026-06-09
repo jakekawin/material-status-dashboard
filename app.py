@@ -166,15 +166,18 @@ def validate_and_diff(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> tuple:
     # Diff: merge on key
     merged = df_sheet[key + ["Receiving Status","Work Status"]].merge(
         df_excel[key + ["Receiving Status","Work Status"]],
-        on=key, suffixes=("_เก่า","_ใหม่"), how="inner"
+        on=key, suffixes=("_old","_new"), how="inner"
     )
     changed = merged[
-        (merged["Receiving Status_เก่า"] != merged["Receiving Status_ใหม่"]) |
-        (merged["Work Status_เก่า"]      != merged["Work Status_ใหม่"])
+        (merged["Receiving Status_old"] != merged["Receiving Status_new"]) |
+        (merged["Work Status_old"]      != merged["Work Status_new"])
     ].copy()
-    changed.columns = ["Riser","System","ITEM No.",
-                        "Receiving Status (เก่า)","Work Status (เก่า)",
-                        "Receiving Status (ใหม่)","Work Status (ใหม่)"]
+    changed = changed.rename(columns={
+        "Receiving Status_old": "Receiving Status (เก่า)",
+        "Work Status_old":      "Work Status (เก่า)",
+        "Receiving Status_new": "Receiving Status (ใหม่)",
+        "Work Status_new":      "Work Status (ใหม่)",
+    })
     return changed.reset_index(drop=True), warnings
 
 
