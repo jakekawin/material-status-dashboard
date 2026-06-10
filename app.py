@@ -353,16 +353,18 @@ recv_blank= len(df[df["Receiving Status"] == ""])
 done      = len(df[df["Work Status"] == "Done"])
 pending   = len(df[df["Work Status"] == "Pending"])
 pct_recv  = received / total * 100 if total > 0 else 0
+pct_done  = done / total * 100 if total > 0 else 0
 
 # ─── KPI CARDS ───────────────────────────────────────────────────────────────
-c1,c2,c3,c4,c5,c6 = st.columns(6)
+c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
 kpi_data = [
-    (c1, "Total Items",    total,    "#1F4E78", "#DEEAF1"),
-    (c2, "Received",       received, "#375623", "#E2EFDA"),
-    (c3, "Shortage",       shortage, "#C00000", "#FCE4D6"),
-    (c4, "Recv Blank",     recv_blank,"#595959","#F2F2F2"),
-    (c5, "Done",           done,     "#2E75B6", "#BDD7EE"),
-    (c6, f"% Received",    f"{pct_recv:.1f}%", "#7F5A00", "#FFF0D0"),
+    (c1, "Total Items",  total,              "#1F4E78", "#DEEAF1"),
+    (c2, "Received",     received,           "#375623", "#E2EFDA"),
+    (c3, "Shortage",     shortage,           "#C00000", "#FCE4D6"),
+    (c4, "Recv Blank",   recv_blank,         "#595959", "#F2F2F2"),
+    (c5, "Done",         done,               "#2E75B6", "#BDD7EE"),
+    (c6, "% Received",   f"{pct_recv:.1f}%", "#7F5A00", "#FFF0D0"),
+    (c7, "% Done",       f"{pct_done:.1f}%", "#2E75B6", "#DEEAF1"),
 ]
 for col, label, value, color, bg in kpi_data:
     with col:
