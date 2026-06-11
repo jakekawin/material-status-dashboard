@@ -435,6 +435,31 @@ with col_chart2:
     )
     st.plotly_chart(fig2, use_container_width=True)
 
+# ─── % DONE BY RISER CHART ───────────────────────────────────────────────────
+st.markdown('<div class="section-header">📊 % Done by Riser</div>', unsafe_allow_html=True)
+
+done_by_riser = df.groupby("Riser").apply(
+    lambda x: round((x["Work Status"] == "Done").sum() / len(x) * 100, 1)
+).reset_index(name="% Done")
+done_by_riser = done_by_riser.sort_values("Riser")
+
+fig3 = px.bar(
+    done_by_riser, x="Riser", y="% Done",
+    text=done_by_riser["% Done"].apply(lambda v: f"{v:.1f}%"),
+    color="% Done",
+    color_continuous_scale=[[0,"#BFBFBF"],[0.5,"#2E75B6"],[1,"#1F4E78"]],
+    range_color=[0, 100],
+)
+fig3.update_layout(
+    plot_bgcolor="white", paper_bgcolor="white",
+    height=260, margin=dict(t=10,b=10,l=10,r=10),
+    font=dict(family="Calibri", size=12),
+    coloraxis_showscale=False,
+    yaxis=dict(range=[0, 110], ticksuffix="%"),
+)
+fig3.update_traces(textposition="outside", textfont_size=11)
+st.plotly_chart(fig3, use_container_width=True)
+
 # ─── SUMMARY TABLE BY MATERIAL ───────────────────────────────────────────────
 st.markdown('<div class="section-header">📋 Summary by Material & Size</div>', unsafe_allow_html=True)
 
