@@ -309,7 +309,7 @@ with st.sidebar:
     sel_system = st.selectbox("System", ["ALL"] + _systems)
     sel_recv   = st.selectbox("Receiving Status", ["ALL","Received","Shortage","Blank"])
     sel_work   = st.selectbox("Work Status",      ["ALL","Done","Pending","Blank"])
-    sel_dwg    = st.selectbox("Dwg Status",       ["ALL","Approved","Wait","Blank"])
+    sel_dwg    = st.selectbox("Dwg Status",       ["ALL","Approved","Wait for Approved","Blank"])
 
     st.markdown("---")
 
@@ -389,7 +389,7 @@ pending   = len(df[df["Work Status"] == "Pending"])
 pct_recv     = received / total * 100 if total > 0 else 0
 pct_done     = done / total * 100 if total > 0 else 0
 dwg_approved = len(df[df["Dwg Status"] == "Approved"])
-dwg_wait     = len(df[df["Dwg Status"] == "Wait"])
+dwg_wait     = len(df[df["Dwg Status"] == "Wait for Approved"])
 
 # ─── KPI CARDS ───────────────────────────────────────────────────────────────
 c1,c2,c3,c4,c5,c6,c7,c8 = st.columns(8)
@@ -580,7 +580,7 @@ for riser in sorted(risers_in_view):
                     with edit_col3:
                         new_work = st.selectbox("Work Status", ["","Done","Pending"])
                     with edit_col4:
-                        new_dwg  = st.selectbox("Dwg Status", ["","Approved","Wait"])
+                        new_dwg  = st.selectbox("Dwg Status", ["","Approved","Wait for Approved"])
 
                     submitted = st.form_submit_button("💾 Save", type="primary", use_container_width=True)
                     if submitted:
