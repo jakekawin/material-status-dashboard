@@ -558,8 +558,9 @@ for riser in sorted(risers_in_view):
         label = f"**{riser} — {system}**  ({len(df_rs)} items)"
         done_cnt = (df_rs["Work Status"] == "Done").sum()
         recv_cnt = (df_rs["Receiving Status"] == "Received").sum()
+        dwg_cnt  = (df_rs["Dwg Status"] == "Approved").sum()
 
-        with st.expander(f"{riser}-{system}  ·  {recv_cnt}/{len(df_rs)} received  ·  {done_cnt}/{len(df_rs)} done"):
+        with st.expander(f"{riser}-{system}  ·  {recv_cnt}/{len(df_rs)} received  ·  {done_cnt}/{len(df_rs)} done  ·  {dwg_cnt}/{len(df_rs)} dwg approved"):
             if st.session_state.authenticated:
                 # EDIT MODE: show editable form
                 st.info("✏️ Edit Mode — เลือก row แล้วแก้ไขด้านล่าง")
