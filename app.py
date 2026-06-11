@@ -434,7 +434,7 @@ with st.expander("🔍 Debug — ตรวจสอบ Filter & Data"):
     st.markdown("**ตัวอย่าง 5 แถวแรก:**")
     st.dataframe(df_all.head(), use_container_width=True)
 
-# ─── CHARTS ──────────────────────────────────────────────────────────────────
+# ─── CHARTS ROW 1: RECEIVING STATUS ─────────────────────────────────────────
 col_chart1, col_chart2 = st.columns(2)
 
 with col_chart1:
@@ -454,7 +454,8 @@ with col_chart1:
     st.plotly_chart(fig1, use_container_width=True)
 
 with col_chart2:
-    st.markdown('<div class="section-header">🥧 Overall Progress</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">🥧 Overall — Receiving Status</div>', unsafe_allow_html=True)
+    recv_blank = len(df[df["Receiving Status"] == ""])
     pie_labels = ["Received","Shortage","Not Updated"]
     pie_values = [received, shortage, recv_blank]
     pie_colors = ["#70AD47","#C00000","#BFBFBF"]
@@ -471,6 +472,84 @@ with col_chart2:
                           font_family="Calibri", showarrow=False)]
     )
     st.plotly_chart(fig2, use_container_width=True)
+
+# ─── CHARTS ROW 2: WORK STATUS ───────────────────────────────────────────────
+col_chart3, col_chart4 = st.columns(2)
+
+with col_chart3:
+    st.markdown('<div class="section-header">🔧 Work Status by Riser</div>', unsafe_allow_html=True)
+    work_data = df.groupby(["Riser","Work Status"]).size().reset_index(name="Count")
+    fig_w1 = px.bar(
+        work_data, x="Riser", y="Count", color="Work Status",
+        color_discrete_map={"Done":"#2E75B6","Pending":"#FFC000","":"#BFBFBF"},
+        text="Count", barmode="stack",
+    )
+    fig_w1.update_layout(
+        plot_bgcolor="white", paper_bgcolor="white",
+        legend_title_text="", height=280, margin=dict(t=10,b=10,l=10,r=10),
+        font=dict(family="Calibri", size=12),
+    )
+    fig_w1.update_traces(textposition="inside", textfont_size=10)
+    st.plotly_chart(fig_w1, use_container_width=True)
+
+with col_chart4:
+    st.markdown('<div class="section-header">🥧 Overall — Work Status</div>', unsafe_allow_html=True)
+    work_blank = len(df[df["Work Status"] == ""])
+    fig_w2 = go.Figure(go.Pie(
+        labels=["Done","Pending","Not Updated"],
+        values=[done, pending, work_blank],
+        hole=.55,
+        marker_colors=["#2E75B6","#FFC000","#BFBFBF"],
+        textinfo="label+percent", textfont_size=11,
+    ))
+    fig_w2.update_layout(
+        showlegend=False, height=280,
+        margin=dict(t=10,b=10,l=10,r=10),
+        annotations=[dict(text=f"{pct_done:.0f}%", x=0.5, y=0.5,
+                          font_size=28, font_color="#1F4E78",
+                          font_family="Calibri", showarrow=False)]
+    )
+    st.plotly_chart(fig_w2, use_container_width=True)
+
+# ─── CHARTS ROW 3: DWG STATUS ────────────────────────────────────────────────
+col_chart5, col_chart6 = st.columns(2)
+
+with col_chart5:
+    st.markdown('<div class="section-header">📐 Dwg Status by Riser</div>', unsafe_allow_html=True)
+    dwg_data = df.groupby(["Riser","Dwg Status"]).size().reset_index(name="Count")
+    fig_d1 = px.bar(
+        dwg_data, x="Riser", y="Count", color="Dwg Status",
+        color_discrete_map={"Approved":"#375623","Wait for Approved":"#FFC000","":"#BFBFBF"},
+        text="Count", barmode="stack",
+    )
+    fig_d1.update_layout(
+        plot_bgcolor="white", paper_bgcolor="white",
+        legend_title_text="", height=280, margin=dict(t=10,b=10,l=10,r=10),
+        font=dict(family="Calibri", size=12),
+    )
+    fig_d1.update_traces(textposition="inside", textfont_size=10)
+    st.plotly_chart(fig_d1, use_container_width=True)
+
+with col_chart6:
+    st.markdown('<div class="section-header">🥧 Overall — Dwg Status</div>', unsafe_allow_html=True)
+    dwg_blank = len(df[df["Dwg Status"] == ""])
+    dwg_total = len(df)
+    pct_dwg = dwg_approved / dwg_total * 100 if dwg_total > 0 else 0
+    fig_d2 = go.Figure(go.Pie(
+        labels=["Approved","Wait for Approved","Not Updated"],
+        values=[dwg_approved, dwg_wait, dwg_blank],
+        hole=.55,
+        marker_colors=["#375623","#FFC000","#BFBFBF"],
+        textinfo="label+percent", textfont_size=11,
+    ))
+    fig_d2.update_layout(
+        showlegend=False, height=280,
+        margin=dict(t=10,b=10,l=10,r=10),
+        annotations=[dict(text=f"{pct_dwg:.0f}%", x=0.5, y=0.5,
+                          font_size=28, font_color="#1F4E78",
+                          font_family="Calibri", showarrow=False)]
+    )
+    st.plotly_chart(fig_d2, use_container_width=True)
 
 # ─── % DONE BY RISER CHART ───────────────────────────────────────────────────
 st.markdown('<div class="section-header">📊 % Done by Riser</div>', unsafe_allow_html=True)
