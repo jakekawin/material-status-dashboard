@@ -90,15 +90,27 @@ def get_gc():
 
 
 @st.cache_data(ttl=300)  # refresh every 5 minutes
+@st.cache_data(ttl=86400)
+def ensure_dwg_column():
+    """Add 'Dwg Status' header to Google Sheets column H if missing."""
+    gc = get_gc()
+    sh = gc.open(SHEET_NAME)
+    ws = sh.worksheet("Data")
+    headers = ws.row_values(1)
+    if len(headers) < 8 or headers[7] != "Dwg Status":
+        ws.update_cell(1, 8, "Dwg Status")
+    return True
+
+
+@st.cache_data(ttl=300)  # refresh every 5 minutes
 def load_data():
     """Load all RS data from Google Sheets into a DataFrame."""
     gc = get_gc()
     sh = gc.open(SHEET_NAME)
-    ws = sh.worksheet("Data")   # sheet ชื่อ "Data"
+    ws = sh.worksheet("Data")
     records = ws.get_all_records()
     df = pd.DataFrame(records)
-    # ensure correct dtypes — clean ALL key columns
-    for col in ["Riser","System","Receiving Status","Work Status"]:
+    for col in ["Riser","System","Receiving Status","Work Status","Dwg Status"]:
         if col not in df.columns:
             df[col] = ""
         df[col] = df[col].fillna("").astype(str).str.strip().replace("nan","")
@@ -233,16 +245,16 @@ def generate_excel_report(df: pd.DataFrame, summary_df: pd.DataFrame) -> bytes:
     return output.getvalue()
 
 
-def save_row(row_index: int, recv_status: str, work_status: str):
+def save_row(row_index: int, recv_status: str, work_status: str, dwg_status: str = ""):
     """Update one row in Google Sheets (1-indexed, +2 for header+1-based)."""
     gc = get_gc()
     sh = gc.open(SHEET_NAME)
     ws = sh.worksheet("Data")
-    sheet_row = row_index + 2   # header row = 1, data starts row 2
-    # columns: Receiving Status = col 6, Work Status = col 7
+    sheet_row = row_index + 2
     ws.update_cell(sheet_row, 6, recv_status)
     ws.update_cell(sheet_row, 7, work_status)
-    load_data.clear()           # bust cache → next load picks up new data
+    ws.update_cell(sheet_row, 8, dwg_status)
+    load_data.clear()
 
 
 # ─── SESSION STATE ───────────────────────────────────────────────────────────
@@ -250,6 +262,9 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = datetime.now()
+
+# Ensure Dwg Status column exists in Google Sheets
+ensure_dwg_column()
 
 # ─── HEADER ──────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -281,6 +296,7 @@ with st.sidebar:
     sel_system = st.selectbox("System", ["ALL"] + _systems)
     sel_recv   = st.selectbox("Receiving Status", ["ALL","Received","Shortage","Blank"])
     sel_work   = st.selectbox("Work Status",      ["ALL","Done","Pending","Blank"])
+    sel_dwg    = st.selectbox("Dwg Status",       ["ALL","Approved","Wait","Blank"])
 
     st.markdown("---")
 
@@ -345,6 +361,11 @@ if sel_work != "ALL":
         df = df[df["Work Status"] == ""]
     else:
         df = df[df["Work Status"] == sel_work]
+if sel_dwg != "ALL":
+    if sel_dwg == "Blank":
+        df = df[df["Dwg Status"] == ""]
+    else:
+        df = df[df["Dwg Status"] == sel_dwg]
 
 total     = len(df)
 received  = len(df[df["Receiving Status"] == "Received"])
@@ -352,19 +373,22 @@ shortage  = len(df[df["Receiving Status"] == "Shortage"])
 recv_blank= len(df[df["Receiving Status"] == ""])
 done      = len(df[df["Work Status"] == "Done"])
 pending   = len(df[df["Work Status"] == "Pending"])
-pct_recv  = received / total * 100 if total > 0 else 0
-pct_done  = done / total * 100 if total > 0 else 0
+pct_recv     = received / total * 100 if total > 0 else 0
+pct_done     = done / total * 100 if total > 0 else 0
+dwg_approved = len(df[df["Dwg Status"] == "Approved"])
+dwg_wait     = len(df[df["Dwg Status"] == "Wait"])
 
 # ─── KPI CARDS ───────────────────────────────────────────────────────────────
-c1,c2,c3,c4,c5,c6,c7 = st.columns(7)
+c1,c2,c3,c4,c5,c6,c7,c8 = st.columns(8)
 kpi_data = [
-    (c1, "Total Items",  total,              "#1F4E78", "#DEEAF1"),
-    (c2, "Received",     received,           "#375623", "#E2EFDA"),
-    (c3, "Shortage",     shortage,           "#C00000", "#FCE4D6"),
-    (c4, "Recv Blank",   recv_blank,         "#595959", "#F2F2F2"),
-    (c5, "Done",         done,               "#2E75B6", "#BDD7EE"),
-    (c6, "% Received",   f"{pct_recv:.1f}%", "#7F5A00", "#FFF0D0"),
-    (c7, "% Done",       f"{pct_done:.1f}%", "#2E75B6", "#DEEAF1"),
+    (c1, "Total Items",   total,               "#1F4E78", "#DEEAF1"),
+    (c2, "Received",      received,            "#375623", "#E2EFDA"),
+    (c3, "Shortage",      shortage,            "#C00000", "#FCE4D6"),
+    (c4, "Done",          done,                "#2E75B6", "#BDD7EE"),
+    (c5, "% Received",    f"{pct_recv:.1f}%",  "#7F5A00", "#FFF0D0"),
+    (c6, "% Done",        f"{pct_done:.1f}%",  "#2E75B6", "#DEEAF1"),
+    (c7, "Dwg Approved",  dwg_approved,        "#375623", "#E2EFDA"),
+    (c8, "Dwg Wait",      dwg_wait,            "#C00000", "#FCE4D6"),
 ]
 for col, label, value, color, bg in kpi_data:
     with col:
@@ -528,13 +552,13 @@ for riser in sorted(risers_in_view):
                 st.info("✏️ Edit Mode — เลือก row แล้วแก้ไขด้านล่าง")
 
                 # Display table
-                display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status"]
+                display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
                 st.dataframe(df_rs[display_cols].reset_index(drop=True), use_container_width=True, height=200)
 
                 # Edit form
                 with st.form(f"edit_{riser}_{system}"):
                     st.markdown(f"**แก้ไข {riser}-{system}:**")
-                    edit_col1, edit_col2, edit_col3 = st.columns(3)
+                    edit_col1, edit_col2, edit_col3, edit_col4 = st.columns(4)
                     with edit_col1:
                         item_options = df_rs["ITEM No."].tolist()
                         sel_item = st.selectbox("Item No.", item_options)
@@ -542,20 +566,21 @@ for riser in sorted(risers_in_view):
                         new_recv = st.selectbox("Receiving Status", ["","Received","Shortage"])
                     with edit_col3:
                         new_work = st.selectbox("Work Status", ["","Done","Pending"])
+                    with edit_col4:
+                        new_dwg  = st.selectbox("Dwg Status", ["","Approved","Wait"])
 
                     submitted = st.form_submit_button("💾 Save", type="primary", use_container_width=True)
                     if submitted:
-                        # Find the row index in the full dataframe
-                        mask = (df_all["Riser"] == riser) & (df_all["System"] == system) & (df_all["ITEM No."] == sel_item)
+                        mask = (df_all["Riser"] == riser) & (df_all["System"] == system) & (df_all["ITEM No."].astype(str) == str(sel_item))
                         idx = df_all[mask].index
                         if len(idx) > 0:
-                            save_row(int(idx[0]), new_recv, new_work)
-                            st.success(f"✓ บันทึกแล้ว: {riser}-{system} Item {sel_item} → {new_recv or 'Blank'} / {new_work or 'Blank'}")
+                            save_row(int(idx[0]), new_recv, new_work, new_dwg)
+                            st.success(f"✓ บันทึกแล้ว: {riser}-{system} Item {sel_item} → Recv:{new_recv or '-'} / Work:{new_work or '-'} / Dwg:{new_dwg or '-'}")
                             time.sleep(1)
                             st.rerun()
             else:
                 # VIEW MODE: read-only table
-                display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status"]
+                display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
 
                 def highlight_row(row):
                     styles = [""] * len(row)
