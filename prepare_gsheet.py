@@ -36,25 +36,25 @@ def main(excel_path, creds_path):
         # Row 3 (index 2) = column headers
         # Data starts row 4 (index 3)
         # Groups: cols 1-5, 6-10, 11-15, 16-20  (0-indexed: B=1)
-        group_starts = [1, 6, 11, 16]  # 0-indexed column of ITEM No. for each group
+        group_starts = [1, 7, 13, 19]  # 0-indexed; each group now = 6 cols (added Dwg Status)
 
         for gs in group_starts:
             group_header = str(df_raw.iloc[1, gs]).strip() if gs < df_raw.shape[1] else ""
             if not group_header or group_header == "nan":
                 continue
-            # Parse "RS1-CHWF" → Riser=RS1, System=CHWF
             parts = group_header.split("-")
             riser  = parts[0] if len(parts) >= 1 else ""
             system = parts[1] if len(parts) >= 2 else ""
 
-            for row_idx in range(3, len(df_raw)):  # data rows
+            for row_idx in range(3, len(df_raw)):
                 row = df_raw.iloc[row_idx]
                 if gs >= len(row): continue
-                item_no = row.iloc[gs]
-                size    = row.iloc[gs+1] if gs+1 < len(row) else ""
-                material= row.iloc[gs+2] if gs+2 < len(row) else ""
-                recv    = row.iloc[gs+3] if gs+3 < len(row) else ""
-                work    = row.iloc[gs+4] if gs+4 < len(row) else ""
+                item_no  = row.iloc[gs]
+                size     = row.iloc[gs+1] if gs+1 < len(row) else ""
+                material = row.iloc[gs+2] if gs+2 < len(row) else ""
+                recv     = row.iloc[gs+3] if gs+3 < len(row) else ""
+                work     = row.iloc[gs+4] if gs+4 < len(row) else ""
+                dwg      = row.iloc[gs+5] if gs+5 < len(row) else ""
 
                 if pd.isna(item_no) or str(item_no).strip() == "":
                     continue
@@ -67,6 +67,7 @@ def main(excel_path, creds_path):
                     "Material":         str(material).strip() if not pd.isna(material) else "",
                     "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),
                     "Work Status":      "" if pd.isna(work) else str(work).strip(),
+                    "Dwg Status":       "" if pd.isna(dwg)  else str(dwg).strip(),
                 })
 
     df_out = pd.DataFrame(all_rows)
@@ -90,7 +91,7 @@ def main(excel_path, creds_path):
         ws = sh.add_worksheet("Data", rows=1000, cols=10)
 
     # Write header + data
-    headers = ["Riser","System","ITEM No.","Size","Material","Receiving Status","Work Status"]
+    headers = ["Riser","System","ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
     data_to_write = [headers] + df_out[headers].values.tolist()
     ws.update("A1", data_to_write)
     print(f"  ✓ Written {len(df_out)} rows to '{SHEET_NAME}/Data'")

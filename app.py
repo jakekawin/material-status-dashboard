@@ -131,7 +131,7 @@ def parse_excel_for_import(excel_file) -> tuple:
         return None, [f"ไม่พบ sheet: {', '.join(missing)}"]
 
     all_rows = []
-    group_starts = [1, 6, 11, 16]
+    group_starts = [1, 7, 13, 19]  # each group = 6 cols (incl. Dwg Status)
     for sheet in required_sheets:
         df_raw = pd.read_excel(excel_file, sheet_name=sheet, header=None)
         for gs in group_starts:
@@ -148,6 +148,7 @@ def parse_excel_for_import(excel_file) -> tuple:
                 if pd.isna(item_no) or str(item_no).strip() == "": continue
                 recv = row.iloc[gs+3] if gs+3 < len(row) else ""
                 work = row.iloc[gs+4] if gs+4 < len(row) else ""
+                dwg  = row.iloc[gs+5] if gs+5 < len(row) else ""
                 all_rows.append({
                     "Riser":            str(riser).strip(),
                     "System":           str(system).strip(),
@@ -156,6 +157,7 @@ def parse_excel_for_import(excel_file) -> tuple:
                     "Material":         str(row.iloc[gs+2]).strip() if not pd.isna(row.iloc[gs+2]) else "",
                     "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),
                     "Work Status":      "" if pd.isna(work) else str(work).strip(),
+                    "Dwg Status":       "" if pd.isna(dwg)  else str(dwg).strip(),
                 })
     return pd.DataFrame(all_rows), errors
 
@@ -182,20 +184,23 @@ def validate_and_diff(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> tuple:
         warnings.append(f"⚠️ {len(only_sheet)} items ใน Sheet ที่ไม่มีใน Excel (จะไม่ถูกแตะต้อง)")
 
     # Diff: merge on key
-    merged = df_sheet[key + ["Receiving Status","Work Status"]].merge(
-        df_excel[key + ["Receiving Status","Work Status"]],
+    status_cols = ["Receiving Status","Work Status","Dwg Status"]
+    # only use cols that exist in both
+    status_cols = [c for c in status_cols if c in df_sheet.columns and c in df_excel.columns]
+
+    merged = df_sheet[key + status_cols].merge(
+        df_excel[key + status_cols],
         on=key, suffixes=("_old","_new"), how="inner"
     )
-    changed = merged[
-        (merged["Receiving Status_old"] != merged["Receiving Status_new"]) |
-        (merged["Work Status_old"]      != merged["Work Status_new"])
-    ].copy()
-    changed = changed.rename(columns={
-        "Receiving Status_old": "Receiving Status (เก่า)",
-        "Work Status_old":      "Work Status (เก่า)",
-        "Receiving Status_new": "Receiving Status (ใหม่)",
-        "Work Status_new":      "Work Status (ใหม่)",
-    })
+    mask = False
+    for c in status_cols:
+        mask = mask | (merged[f"{c}_old"] != merged[f"{c}_new"])
+    changed = merged[mask].copy()
+    rename_map = {}
+    for c in status_cols:
+        rename_map[f"{c}_old"] = f"{c} (เก่า)"
+        rename_map[f"{c}_new"] = f"{c} (ใหม่)"
+    changed = changed.rename(columns=rename_map)
     return changed.reset_index(drop=True), warnings
 
 
@@ -214,17 +219,25 @@ def do_import(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> int:
     df_sheet_idx = df_sheet[key].copy()
     df_sheet_idx["_idx"] = df_sheet_idx.index
 
+    import_cols = ["Receiving Status","Work Status"]
+    if "Dwg Status" in df_excel.columns:
+        import_cols.append("Dwg Status")
+
     merged = df_sheet_idx.merge(
-        df_excel[key + ["Receiving Status","Work Status"]],
+        df_excel[key + import_cols],
         on=key, how="inner"
     )
 
     updates = []
     for _, row in merged.iterrows():
-        gsheet_row = int(row["_idx"]) + 2   # +1 header, +1 for 1-based
+        gsheet_row = int(row["_idx"]) + 2
+        values = [row["Receiving Status"], row["Work Status"]]
+        if "Dwg Status" in import_cols:
+            values.append(row["Dwg Status"])
+        col_end = "H" if "Dwg Status" in import_cols else "G"
         updates.append({
-            "range": f"F{gsheet_row}:G{gsheet_row}",
-            "values": [[row["Receiving Status"], row["Work Status"]]]
+            "range": f"F{gsheet_row}:{col_end}{gsheet_row}",
+            "values": [values]
         })
 
     for i in range(0, len(updates), 100):   # batch in chunks of 100
