@@ -152,7 +152,7 @@ def parse_excel_for_import(excel_file) -> tuple:
                 all_rows.append({
                     "Riser":            str(riser).strip(),
                     "System":           str(system).strip(),
-                    "ITEM No.":         str(int(item_no)),
+                    "ITEM No.":         str(int(float(str(item_no)))),
                     "Size":             str(row.iloc[gs+1]).strip() if not pd.isna(row.iloc[gs+1]) else "",
                     "Material":         str(row.iloc[gs+2]).strip() if not pd.isna(row.iloc[gs+2]) else "",
                     "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),
