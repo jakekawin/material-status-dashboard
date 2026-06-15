@@ -125,15 +125,24 @@ def parse_excel_for_import(excel_file) -> tuple:
     except Exception as e:
         return None, [f"ไม่สามารถอ่านไฟล์ได้: {e}"]
 
-    required_sheets = ["RS1-2","RS3-4","RS5-6","RS7-8"]
+    required_sheets  = ["RS1-2","RS3-4","RS5-6","RS7-8"]
+    optional_sheets  = ["LV7"]
     missing = [s for s in required_sheets if s not in xls.sheet_names]
     if missing:
         return None, [f"ไม่พบ sheet: {', '.join(missing)}"]
 
     all_rows = []
-    group_starts = [1, 7, 13, 19]  # each group = 6 cols (incl. Dwg Status)
-    for sheet in required_sheets:
+    sheet_group_starts = {
+        "RS1-2": [1, 7, 13, 19],
+        "RS3-4": [1, 7, 13, 19],
+        "RS5-6": [1, 7, 13, 19],
+        "RS7-8": [1, 7, 13, 19],
+        "LV7":   [1, 7],
+    }
+    all_sheets = required_sheets + [s for s in optional_sheets if s in xls.sheet_names]
+    for sheet in all_sheets:
         df_raw = pd.read_excel(excel_file, sheet_name=sheet, header=None)
+        group_starts = sheet_group_starts.get(sheet, [1, 7, 13, 19])
         for gs in group_starts:
             group_header = str(df_raw.iloc[1, gs]).strip() if gs < df_raw.shape[1] else ""
             if not group_header or group_header == "nan":

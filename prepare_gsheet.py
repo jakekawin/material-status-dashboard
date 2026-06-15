@@ -26,17 +26,20 @@ def main(excel_path, creds_path):
     all_rows = []
     xls = pd.ExcelFile(excel_path)
 
-    for sheet in ["RS1-2","RS3-4","RS5-6","RS7-8"]:
+    # sheet_config: sheet_name → group_starts (0-indexed)
+    sheet_config = {
+        "RS1-2":  [1, 7, 13, 19],   # 4 groups (RS1-CHWF, RS1-CHWR, RS2-CHWF, RS2-CHWR)
+        "RS3-4":  [1, 7, 13, 19],
+        "RS5-6":  [1, 7, 13, 19],
+        "RS7-8":  [1, 7, 13, 19],
+        "LV7":    [1, 7],            # 2 groups (LV7-CHWF, LV7-CHWR)
+    }
+
+    for sheet, group_starts in sheet_config.items():
         if sheet not in xls.sheet_names:
             print(f"  ⚠ Sheet {sheet} not found, skipping")
             continue
         df_raw = pd.read_excel(excel_path, sheet_name=sheet, header=None)
-
-        # Row 2 (index 1) = Riser group names  (B=RS1-CHWF, G=RS1-CHWR, L=RS2-CHWF, ...)
-        # Row 3 (index 2) = column headers
-        # Data starts row 4 (index 3)
-        # Groups: cols 1-5, 6-10, 11-15, 16-20  (0-indexed: B=1)
-        group_starts = [1, 7, 13, 19]  # 0-indexed; each group now = 6 cols (added Dwg Status)
 
         for gs in group_starts:
             group_header = str(df_raw.iloc[1, gs]).strip() if gs < df_raw.shape[1] else ""
@@ -62,7 +65,7 @@ def main(excel_path, creds_path):
                 all_rows.append({
                     "Riser":            str(riser).strip(),
                     "System":           str(system).strip(),
-                    "ITEM No.":         str(int(item_no)) if not pd.isna(item_no) else "",
+                    "ITEM No.":         str(int(float(str(item_no)))) if not pd.isna(item_no) else "",
                     "Size":             str(size).strip() if not pd.isna(size) else "",
                     "Material":         str(material).strip() if not pd.isna(material) else "",
                     "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),
