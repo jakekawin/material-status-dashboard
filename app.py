@@ -302,7 +302,7 @@ with st.sidebar:
     st.markdown("## 🔧 Controls")
 
     # Auto-refresh toggle
-    auto_refresh = st.toggle("Auto Refresh (5 min)", value=True)
+    auto_refresh = st.toggle("Auto Refresh (15 min)", value=True)
     if st.button("🔄 Refresh Now"):
         load_data.clear()
         st.rerun()
@@ -748,11 +748,11 @@ if st.session_state.authenticated:
 st.markdown(f"""
 <div class="footer">
   Material Status Dashboard · Project Terra Mat ·
-  Auto-refresh every 30s · Last updated: {datetime.now().strftime("%d %b %Y %H:%M")}
+  Auto-refresh every 15 min · Last updated: {datetime.now().strftime("%d %b %Y %H:%M")}
 </div>
 """, unsafe_allow_html=True)
 
 # ─── AUTO REFRESH ────────────────────────────────────────────────────────────
 # Use HTML meta-refresh (non-blocking) instead of time.sleep()
 if auto_refresh:
-    st.markdown('<meta http-equiv="refresh" content="300">', unsafe_allow_html=True)
+    st.markdown('<meta http-equiv="refresh" content="900">', unsafe_allow_html=True)
