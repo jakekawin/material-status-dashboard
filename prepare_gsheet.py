@@ -27,13 +27,24 @@ def main(excel_path, creds_path):
     xls = pd.ExcelFile(excel_path)
 
     # sheet_config: sheet_name → group_starts (0-indexed)
+    LV7_CODES = [
+        "69019-ME-CDWF750-01", "69019-ME-CDWF500-01", "69019-ME-CDWF500-02", "69019-ME-CDWF500-03",
+        "69019-ME-CDWR750-01", "69019-ME-CDWR500-01", "69019-ME-CDWR500-02", "69019-ME-CDWR500-03",
+        "69019-ME-EQ600-01",
+        "69019-ME-P1-FUF150-01", "69019-ME-P1-FUR150-01", "69019-ME-P1-FUR150-02",
+        "69019-ME-P2-FUF150-01", "69019-ME-P2-FUR150-01", "69019-ME-P2-FUR150-02",
+        "69019-ME-P3-FUF150-01", "69019-ME-P3-FUR150-01", "69019-ME-P3-FUR150-02",
+        "69019-ME-FUW100-01", "69019-ME-FUW100-02", "69019-ME-FUW100-03",
+        "69019-ME-CDP100-01",
+    ]
     sheet_config = {
         "RS1-2":  [1, 7, 13, 19],   # 4 groups (RS1-CHWF, RS1-CHWR, RS2-CHWF, RS2-CHWR)
         "RS3-4":  [1, 7, 13, 19],
         "RS5-6":  [1, 7, 13, 19],
         "RS7-8":  [1, 7, 13, 19],
-        "LV7":    [1, 7],            # 2 groups (LV7-CHWF, LV7-CHWR)
     }
+    for _code in LV7_CODES:
+        sheet_config[_code] = [1]   # 1 group per LV7 sheet
 
     for sheet, group_starts in sheet_config.items():
         if sheet not in xls.sheet_names:
@@ -47,7 +58,7 @@ def main(excel_path, creds_path):
                 continue
             parts = group_header.split("-")
             riser  = parts[0] if len(parts) >= 1 else ""
-            system = parts[1] if len(parts) >= 2 else ""
+            system = "-".join(parts[1:]) if len(parts) >= 2 else ""
 
             for row_idx in range(3, len(df_raw)):
                 row = df_raw.iloc[row_idx]

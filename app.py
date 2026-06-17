@@ -125,8 +125,18 @@ def parse_excel_for_import(excel_file) -> tuple:
     except Exception as e:
         return None, [f"ไม่สามารถอ่านไฟล์ได้: {e}"]
 
+    _LV7_CODES = [
+        "69019-ME-CDWF750-01", "69019-ME-CDWF500-01", "69019-ME-CDWF500-02", "69019-ME-CDWF500-03",
+        "69019-ME-CDWR750-01", "69019-ME-CDWR500-01", "69019-ME-CDWR500-02", "69019-ME-CDWR500-03",
+        "69019-ME-EQ600-01",
+        "69019-ME-P1-FUF150-01", "69019-ME-P1-FUR150-01", "69019-ME-P1-FUR150-02",
+        "69019-ME-P2-FUF150-01", "69019-ME-P2-FUR150-01", "69019-ME-P2-FUR150-02",
+        "69019-ME-P3-FUF150-01", "69019-ME-P3-FUR150-01", "69019-ME-P3-FUR150-02",
+        "69019-ME-FUW100-01", "69019-ME-FUW100-02", "69019-ME-FUW100-03",
+        "69019-ME-CDP100-01",
+    ]
     required_sheets  = ["RS1-2","RS3-4","RS5-6","RS7-8"]
-    optional_sheets  = ["LV7"]
+    optional_sheets  = _LV7_CODES
     missing = [s for s in required_sheets if s not in xls.sheet_names]
     if missing:
         return None, [f"ไม่พบ sheet: {', '.join(missing)}"]
@@ -137,8 +147,9 @@ def parse_excel_for_import(excel_file) -> tuple:
         "RS3-4": [1, 7, 13, 19],
         "RS5-6": [1, 7, 13, 19],
         "RS7-8": [1, 7, 13, 19],
-        "LV7":   [1, 7],
     }
+    for _code in _LV7_CODES:
+        sheet_group_starts[_code] = [1]
     all_sheets = required_sheets + [s for s in optional_sheets if s in xls.sheet_names]
     for sheet in all_sheets:
         df_raw = pd.read_excel(excel_file, sheet_name=sheet, header=None)
@@ -149,7 +160,7 @@ def parse_excel_for_import(excel_file) -> tuple:
                 continue
             parts = group_header.split("-")
             riser  = parts[0] if len(parts) >= 1 else ""
-            system = parts[1] if len(parts) >= 2 else ""
+            system = "-".join(parts[1:]) if len(parts) >= 2 else ""
             for row_idx in range(3, len(df_raw)):
                 row = df_raw.iloc[row_idx]
                 if gs >= len(row): continue
@@ -634,73 +645,74 @@ report_placeholder.download_button(
 )
 
 # ─── DETAIL TABLE + EDIT ─────────────────────────────────────────────────────
-st.markdown('<div class="section-header">📝 Detail — Item List</div>', unsafe_allow_html=True)
 
-# Group by Riser for expandable sections
-risers_in_view = df["Riser"].unique() if len(df) > 0 else []
+def _render_group_expander(riser, system, df_rs):
+    """Render a single group expander (view + edit modes)."""
+    done_cnt = (df_rs["Work Status"] == "Done").sum()
+    recv_cnt = (df_rs["Receiving Status"] == "Received").sum()
+    dwg_cnt  = (df_rs["Dwg Status"] == "Approved").sum()
+    lbl = f"{riser}-{system}  ·  {recv_cnt}/{len(df_rs)} received  ·  {done_cnt}/{len(df_rs)} done  ·  {dwg_cnt}/{len(df_rs)} dwg approved"
+    with st.expander(lbl):
+        if st.session_state.authenticated:
+            # EDIT MODE: show editable form
+            st.info("✏️ Edit Mode — เลือก row แล้วแก้ไขด้านล่าง")
+            display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
+            st.dataframe(df_rs[display_cols].reset_index(drop=True), use_container_width=True, height=200)
+            safe_key = system.replace("-","_").replace(".","_")
+            with st.form(f"edit_{riser}_{safe_key}"):
+                st.markdown(f"**แก้ไข {riser}-{system}:**")
+                edit_col1, edit_col2, edit_col3, edit_col4 = st.columns(4)
+                with edit_col1:
+                    sel_item = st.selectbox("Item No.", df_rs["ITEM No."].tolist())
+                with edit_col2:
+                    new_recv = st.selectbox("Receiving Status", ["","Received","Shortage"])
+                with edit_col3:
+                    new_work = st.selectbox("Work Status", ["","Done","Pending"])
+                with edit_col4:
+                    new_dwg  = st.selectbox("Dwg Status", ["","Approved","Wait for Approved"])
+                submitted = st.form_submit_button("💾 Save", type="primary", use_container_width=True)
+                if submitted:
+                    mask = (df_all["Riser"] == riser) & (df_all["System"] == system) & (df_all["ITEM No."].astype(str) == str(sel_item))
+                    idx = df_all[mask].index
+                    if len(idx) > 0:
+                        save_row(int(idx[0]), new_recv, new_work, new_dwg)
+                        st.success(f"✓ บันทึกแล้ว: {riser}-{system} Item {sel_item} → Recv:{new_recv or '-'} / Work:{new_work or '-'} / Dwg:{new_dwg or '-'}")
+                        time.sleep(1)
+                        st.rerun()
+        else:
+            # VIEW MODE: read-only table
+            display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
+            def highlight_row(row):
+                styles = [""] * len(row)
+                recv = row.get("Receiving Status","")
+                work = row.get("Work Status","")
+                if recv == "Shortage":
+                    styles = ["background-color:#FCE4D6"] * len(row)
+                elif recv == "Received" and work == "Done":
+                    styles = ["background-color:#E2EFDA"] * len(row)
+                elif recv == "Received":
+                    styles = ["background-color:#EBF3E8"] * len(row)
+                return styles
+            disp = df_rs[display_cols].reset_index(drop=True)
+            st.dataframe(
+                disp.style.apply(highlight_row, axis=1),
+                use_container_width=True, height=min(200, len(disp)*36+40)
+            )
 
-for riser in sorted(risers_in_view):
-    df_r = df[df["Riser"] == riser].copy()
+# RS1–RS8 section
+st.markdown('<div class="section-header">📝 Detail — Riser Item List (RS1–RS8)</div>', unsafe_allow_html=True)
+df_rs_only = df[df["Riser"].str.startswith("RS", na=False)]
+for riser in sorted(df_rs_only["Riser"].unique()):
+    df_r = df_rs_only[df_rs_only["Riser"] == riser]
     for system in sorted(df_r["System"].unique()):
-        df_rs = df_r[df_r["System"] == system].copy()
-        label = f"**{riser} — {system}**  ({len(df_rs)} items)"
-        done_cnt = (df_rs["Work Status"] == "Done").sum()
-        recv_cnt = (df_rs["Receiving Status"] == "Received").sum()
-        dwg_cnt  = (df_rs["Dwg Status"] == "Approved").sum()
+        _render_group_expander(riser, system, df_r[df_r["System"] == system].copy())
 
-        with st.expander(f"{riser}-{system}  ·  {recv_cnt}/{len(df_rs)} received  ·  {done_cnt}/{len(df_rs)} done  ·  {dwg_cnt}/{len(df_rs)} dwg approved"):
-            if st.session_state.authenticated:
-                # EDIT MODE: show editable form
-                st.info("✏️ Edit Mode — เลือก row แล้วแก้ไขด้านล่าง")
-
-                # Display table
-                display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
-                st.dataframe(df_rs[display_cols].reset_index(drop=True), use_container_width=True, height=200)
-
-                # Edit form
-                with st.form(f"edit_{riser}_{system}"):
-                    st.markdown(f"**แก้ไข {riser}-{system}:**")
-                    edit_col1, edit_col2, edit_col3, edit_col4 = st.columns(4)
-                    with edit_col1:
-                        item_options = df_rs["ITEM No."].tolist()
-                        sel_item = st.selectbox("Item No.", item_options)
-                    with edit_col2:
-                        new_recv = st.selectbox("Receiving Status", ["","Received","Shortage"])
-                    with edit_col3:
-                        new_work = st.selectbox("Work Status", ["","Done","Pending"])
-                    with edit_col4:
-                        new_dwg  = st.selectbox("Dwg Status", ["","Approved","Wait for Approved"])
-
-                    submitted = st.form_submit_button("💾 Save", type="primary", use_container_width=True)
-                    if submitted:
-                        mask = (df_all["Riser"] == riser) & (df_all["System"] == system) & (df_all["ITEM No."].astype(str) == str(sel_item))
-                        idx = df_all[mask].index
-                        if len(idx) > 0:
-                            save_row(int(idx[0]), new_recv, new_work, new_dwg)
-                            st.success(f"✓ บันทึกแล้ว: {riser}-{system} Item {sel_item} → Recv:{new_recv or '-'} / Work:{new_work or '-'} / Dwg:{new_dwg or '-'}")
-                            time.sleep(1)
-                            st.rerun()
-            else:
-                # VIEW MODE: read-only table
-                display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
-
-                def highlight_row(row):
-                    styles = [""] * len(row)
-                    recv = row.get("Receiving Status","")
-                    work = row.get("Work Status","")
-                    if recv == "Shortage":
-                        styles = ["background-color:#FCE4D6"] * len(row)
-                    elif recv == "Received" and work == "Done":
-                        styles = ["background-color:#E2EFDA"] * len(row)
-                    elif recv == "Received":
-                        styles = ["background-color:#EBF3E8"] * len(row)
-                    return styles
-
-                disp = df_rs[display_cols].reset_index(drop=True)
-                st.dataframe(
-                    disp.style.apply(highlight_row, axis=1),
-                    use_container_width=True, height=min(200, len(disp)*36+40)
-                )
+# LV7 section
+df_lv7 = df[df["Riser"] == "LV7"]
+if len(df_lv7) > 0:
+    st.markdown('<div class="section-header">🏗️ Detail — Level 7 Item List</div>', unsafe_allow_html=True)
+    for system in sorted(df_lv7["System"].unique()):
+        _render_group_expander("LV7", system, df_lv7[df_lv7["System"] == system].copy())
 
 # ─── IMPORT FROM EXCEL ───────────────────────────────────────────────────────
 if st.session_state.authenticated:
