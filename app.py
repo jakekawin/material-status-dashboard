@@ -158,9 +158,13 @@ def parse_excel_for_import(excel_file) -> tuple:
             group_header = str(df_raw.iloc[1, gs]).strip() if gs < df_raw.shape[1] else ""
             if not group_header or group_header == "nan":
                 continue
-            parts = group_header.split("-")
-            riser  = parts[0] if len(parts) >= 1 else ""
-            system = "-".join(parts[1:]) if len(parts) >= 2 else ""
+            if sheet in _LV7_CODES:
+                riser  = f"Lvl7-{sheet}"
+                system = ""
+            else:
+                parts  = group_header.split("-")
+                riser  = parts[0] if len(parts) >= 1 else ""
+                system = "-".join(parts[1:]) if len(parts) >= 2 else ""
             for row_idx in range(3, len(df_raw)):
                 row = df_raw.iloc[row_idx]
                 if gs >= len(row): continue
@@ -651,15 +655,17 @@ def _render_group_expander(riser, system, df_rs):
     done_cnt = (df_rs["Work Status"] == "Done").sum()
     recv_cnt = (df_rs["Receiving Status"] == "Received").sum()
     dwg_cnt  = (df_rs["Dwg Status"] == "Approved").sum()
-    lbl = f"{riser}-{system}  ·  {recv_cnt}/{len(df_rs)} received  ·  {done_cnt}/{len(df_rs)} done  ·  {dwg_cnt}/{len(df_rs)} dwg approved"
+    title    = f"{riser}-{system}" if system else riser
+    lbl = f"{title}  ·  {recv_cnt}/{len(df_rs)} received  ·  {done_cnt}/{len(df_rs)} done  ·  {dwg_cnt}/{len(df_rs)} dwg approved"
     with st.expander(lbl):
         if st.session_state.authenticated:
             # EDIT MODE: show editable form
             st.info("✏️ Edit Mode — เลือก row แล้วแก้ไขด้านล่าง")
             display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
             st.dataframe(df_rs[display_cols].reset_index(drop=True), use_container_width=True, height=200)
-            safe_key = system.replace("-","_").replace(".","_")
-            with st.form(f"edit_{riser}_{safe_key}"):
+            safe_riser = riser.replace("-","_")
+            safe_key   = system.replace("-","_").replace(".","_") if system else "grp"
+            with st.form(f"edit_{safe_riser}_{safe_key}"):
                 st.markdown(f"**แก้ไข {riser}-{system}:**")
                 edit_col1, edit_col2, edit_col3, edit_col4 = st.columns(4)
                 with edit_col1:
@@ -708,11 +714,11 @@ for riser in sorted(df_rs_only["Riser"].unique()):
         _render_group_expander(riser, system, df_r[df_r["System"] == system].copy())
 
 # LV7 section
-df_lv7 = df[df["Riser"] == "LV7"]
+df_lv7 = df[df["Riser"].str.startswith("Lvl7-", na=False)]
 if len(df_lv7) > 0:
     st.markdown('<div class="section-header">🏗️ Detail — Level 7 Item List</div>', unsafe_allow_html=True)
-    for system in sorted(df_lv7["System"].unique()):
-        _render_group_expander("LV7", system, df_lv7[df_lv7["System"] == system].copy())
+    for riser in sorted(df_lv7["Riser"].unique()):
+        _render_group_expander(riser, "", df_lv7[df_lv7["Riser"] == riser].copy())
 
 # ─── IMPORT FROM EXCEL ───────────────────────────────────────────────────────
 if st.session_state.authenticated:

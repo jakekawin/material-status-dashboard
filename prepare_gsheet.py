@@ -56,9 +56,14 @@ def main(excel_path, creds_path):
             group_header = str(df_raw.iloc[1, gs]).strip() if gs < df_raw.shape[1] else ""
             if not group_header or group_header == "nan":
                 continue
-            parts = group_header.split("-")
-            riser  = parts[0] if len(parts) >= 1 else ""
-            system = "-".join(parts[1:]) if len(parts) >= 2 else ""
+            if sheet in LV7_CODES:
+                # Each LV7 sheet → its own Riser entry "Lvl7-{short_code}"
+                riser  = f"Lvl7-{sheet}"
+                system = ""
+            else:
+                parts  = group_header.split("-")
+                riser  = parts[0] if len(parts) >= 1 else ""
+                system = "-".join(parts[1:]) if len(parts) >= 2 else ""
 
             for row_idx in range(3, len(df_raw)):
                 row = df_raw.iloc[row_idx]
