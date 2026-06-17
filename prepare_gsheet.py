@@ -28,14 +28,14 @@ def main(excel_path, creds_path):
 
     # sheet_config: sheet_name → group_starts (0-indexed)
     LV7_CODES = [
-        "69019-ME-CDWF750-01", "69019-ME-CDWF500-01", "69019-ME-CDWF500-02", "69019-ME-CDWF500-03",
-        "69019-ME-CDWR750-01", "69019-ME-CDWR500-01", "69019-ME-CDWR500-02", "69019-ME-CDWR500-03",
-        "69019-ME-EQ600-01",
-        "69019-ME-P1-FUF150-01", "69019-ME-P1-FUR150-01", "69019-ME-P1-FUR150-02",
-        "69019-ME-P2-FUF150-01", "69019-ME-P2-FUR150-01", "69019-ME-P2-FUR150-02",
-        "69019-ME-P3-FUF150-01", "69019-ME-P3-FUR150-01", "69019-ME-P3-FUR150-02",
-        "69019-ME-FUW100-01", "69019-ME-FUW100-02", "69019-ME-FUW100-03",
-        "69019-ME-CDP100-01",
+        "CDWF750-01", "CDWF500-01", "CDWF500-02", "CDWF500-03",
+        "CDWR750-01", "CDWR500-01", "CDWR500-02", "CDWR500-03",
+        "EQ600-01",
+        "P1-FUF150-01", "P1-FUR150-01", "P1-FUR150-02",
+        "P2-FUF150-01", "P2-FUR150-01", "P2-FUR150-02",
+        "P3-FUF150-01", "P3-FUR150-01", "P3-FUR150-02",
+        "FUW100-01", "FUW100-02", "FUW100-03",
+        "CDP100-01",
     ]
     sheet_config = {
         "RS1-2":  [1, 7, 13, 19],   # 4 groups (RS1-CHWF, RS1-CHWR, RS2-CHWF, RS2-CHWR)
