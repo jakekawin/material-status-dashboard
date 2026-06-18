@@ -77,11 +77,15 @@ def main(excel_path, creds_path):
 
                 if pd.isna(item_no) or str(item_no).strip() == "":
                     continue
+                try:
+                    item_no_str = str(int(float(str(item_no))))
+                except (ValueError, TypeError):
+                    continue  # skip header rows / non-numeric cells
 
                 all_rows.append({
                     "Riser":            str(riser).strip(),
                     "System":           str(system).strip(),
-                    "ITEM No.":         str(int(float(str(item_no)))) if not pd.isna(item_no) else "",
+                    "ITEM No.":         item_no_str,
                     "Size":             str(size).strip() if not pd.isna(size) else "",
                     "Material":         str(material).strip() if not pd.isna(material) else "",
                     "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),

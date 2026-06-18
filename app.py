@@ -170,13 +170,17 @@ def parse_excel_for_import(excel_file) -> tuple:
                 if gs >= len(row): continue
                 item_no = row.iloc[gs]
                 if pd.isna(item_no) or str(item_no).strip() == "": continue
+                try:
+                    item_no_str = str(int(float(str(item_no))))
+                except (ValueError, TypeError):
+                    continue  # skip header rows / non-numeric cells
                 recv = row.iloc[gs+3] if gs+3 < len(row) else ""
                 work = row.iloc[gs+4] if gs+4 < len(row) else ""
                 dwg  = row.iloc[gs+5] if gs+5 < len(row) else ""
                 all_rows.append({
                     "Riser":            str(riser).strip(),
                     "System":           str(system).strip(),
-                    "ITEM No.":         str(int(float(str(item_no)))),
+                    "ITEM No.":         item_no_str,
                     "Size":             str(row.iloc[gs+1]).strip() if not pd.isna(row.iloc[gs+1]) else "",
                     "Material":         str(row.iloc[gs+2]).strip() if not pd.isna(row.iloc[gs+2]) else "",
                     "Receiving Status": "" if pd.isna(recv) else str(recv).strip(),
