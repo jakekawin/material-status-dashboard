@@ -280,7 +280,7 @@ def generate_excel_report(df: pd.DataFrame, summary_df: pd.DataFrame) -> bytes:
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         summary_df.to_excel(writer, index=False, sheet_name="Summary")
-        df[["Riser","System","ITEM No.","Size","Material","Receiving Status","Work Status"]].to_excel(
+        df[["Riser","System","ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]].to_excel(
             writer, index=False, sheet_name="Detail"
         )
     return output.getvalue()
@@ -614,9 +614,11 @@ summary = df.groupby(["Material","Size"]).agg(
     Recv_Blank=("Receiving Status", lambda x: (x=="").sum()),
     Done=("Work Status", lambda x: (x=="Done").sum()),
     Pending=("Work Status", lambda x: (x=="Pending").sum()),
+    Dwg_Approved=("Dwg Status", lambda x: (x=="Approved").sum()),
+    Dwg_Wait=("Dwg Status", lambda x: (x=="Wait for Approved").sum()),
 ).reset_index()
 summary = summary[summary["Total"] > 0]
-summary.columns = ["Material","Size","Total","Received","Shortage","Recv Blank","Done","Pending"]
+summary.columns = ["Material","Size","Total","Received","Shortage","Recv Blank","Done","Pending","Dwg Approved","Dwg Wait"]
 
 # Color-code the dataframe
 def color_shortage(val):
@@ -634,7 +636,7 @@ def color_done(val):
 
 styled = summary.style \
     .map(color_shortage, subset=["Shortage"]) \
-    .map(color_received, subset=["Received"]) \
+    .map(color_received, subset=["Received","Dwg Approved"]) \
     .map(color_done,     subset=["Done"]) \
     .set_properties(**{"text-align":"center"}) \
     .set_table_styles([{"selector":"th","props":[("background","#1F4E78"),("color","white"),("font-weight","bold"),("text-align","center")]}])
