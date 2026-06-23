@@ -549,83 +549,83 @@ with tab_rs:
     with col1:
         st.markdown('<div class="section-header">📊 Receiving Status by Riser</div>', unsafe_allow_html=True)
         d = df_rs.groupby(["Riser","Receiving Status"]).size().reset_index(name="Count")
-        fig = px.bar(d, x="Riser", y="Count", color="Receiving Status",
+        fig_rs_rv_bar = px.bar(d, x="Riser", y="Count", color="Receiving Status",
             color_discrete_map={"Received":"#70AD47","Shortage":"#C00000","":"#BFBFBF"},
             text="Count", barmode="stack")
-        fig.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
+        fig_rs_rv_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
             height=280,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12))
-        fig.update_traces(textposition="inside",textfont_size=10)
-        st.plotly_chart(fig, use_container_width=True)
+        fig_rs_rv_bar.update_traces(textposition="inside",textfont_size=10)
+        st.plotly_chart(fig_rs_rv_bar, use_container_width=True, key="rs_recv_bar")
     with col2:
         st.markdown('<div class="section-header">🥧 Overall — Receiving</div>', unsafe_allow_html=True)
-        fig = go.Figure(go.Pie(
+        fig_rs_rv_pie = go.Figure(go.Pie(
             labels=["Received","Shortage","Not Updated"],
             values=[_recv,_shrt,(_t-_recv-_shrt)],
             hole=.55, marker_colors=["#70AD47","#C00000","#BFBFBF"],
             textinfo="label+percent",textfont_size=11))
-        fig.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
+        fig_rs_rv_pie.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
             annotations=[dict(text=f"{_pr:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_rs_rv_pie, use_container_width=True, key="rs_recv_pie")
 
     # Charts row 2: Work
     col3, col4 = st.columns(2)
     with col3:
         st.markdown('<div class="section-header">🔧 Work Status by Riser</div>', unsafe_allow_html=True)
         d = df_rs.groupby(["Riser","Work Status"]).size().reset_index(name="Count")
-        fig = px.bar(d, x="Riser", y="Count", color="Work Status",
+        fig_rs_wk_bar = px.bar(d, x="Riser", y="Count", color="Work Status",
             color_discrete_map={"Done":"#2E75B6","Pending":"#FFC000","":"#BFBFBF"},
             text="Count", barmode="stack")
-        fig.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
+        fig_rs_wk_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
             height=280,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12))
-        fig.update_traces(textposition="inside",textfont_size=10)
-        st.plotly_chart(fig, use_container_width=True)
+        fig_rs_wk_bar.update_traces(textposition="inside",textfont_size=10)
+        st.plotly_chart(fig_rs_wk_bar, use_container_width=True, key="rs_work_bar")
     with col4:
         st.markdown('<div class="section-header">🥧 Overall — Work</div>', unsafe_allow_html=True)
-        fig = go.Figure(go.Pie(
+        fig_rs_wk_pie = go.Figure(go.Pie(
             labels=["Done","Pending","Not Updated"],
             values=[_done,_pend,(_t-_done-_pend)],
             hole=.55, marker_colors=["#2E75B6","#FFC000","#BFBFBF"],
             textinfo="label+percent",textfont_size=11))
-        fig.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
+        fig_rs_wk_pie.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
             annotations=[dict(text=f"{_pd:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_rs_wk_pie, use_container_width=True, key="rs_work_pie")
 
     # Charts row 3: Dwg
     col5, col6 = st.columns(2)
     with col5:
         st.markdown('<div class="section-header">📐 Dwg Status by Riser</div>', unsafe_allow_html=True)
         d = df_rs.groupby(["Riser","Dwg Status"]).size().reset_index(name="Count")
-        fig = px.bar(d, x="Riser", y="Count", color="Dwg Status",
+        fig_rs_dg_bar = px.bar(d, x="Riser", y="Count", color="Dwg Status",
             color_discrete_map={"Approved":"#375623","Wait for Approved":"#FFC000","":"#BFBFBF"},
             text="Count", barmode="stack")
-        fig.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
+        fig_rs_dg_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
             height=280,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12))
-        fig.update_traces(textposition="inside",textfont_size=10)
-        st.plotly_chart(fig, use_container_width=True)
+        fig_rs_dg_bar.update_traces(textposition="inside",textfont_size=10)
+        st.plotly_chart(fig_rs_dg_bar, use_container_width=True, key="rs_dwg_bar")
     with col6:
         st.markdown('<div class="section-header">🥧 Overall — Dwg</div>', unsafe_allow_html=True)
-        fig = go.Figure(go.Pie(
+        fig_rs_dg_pie = go.Figure(go.Pie(
             labels=["Approved","Wait for Approved","Not Updated"],
             values=[_dapp,_dwat,(_t-_dapp-_dwat)],
             hole=.55, marker_colors=["#375623","#FFC000","#BFBFBF"],
             textinfo="label+percent",textfont_size=11))
-        fig.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
+        fig_rs_dg_pie.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
             annotations=[dict(text=f"{_pdwg:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_rs_dg_pie, use_container_width=True, key="rs_dwg_pie")
 
     # % Done bar
     st.markdown('<div class="section-header">📊 % Done by Riser</div>', unsafe_allow_html=True)
     dbr = df_rs.groupby("Riser").apply(
         lambda x: round((x["Work Status"]=="Done").sum()/len(x)*100,1)
     ).reset_index(name="% Done").sort_values("Riser")
-    fig = px.bar(dbr, x="Riser", y="% Done",
+    fig_rs_pct = px.bar(dbr, x="Riser", y="% Done",
         text=dbr["% Done"].apply(lambda v: f"{v:.1f}%"),
         color="% Done", color_continuous_scale=[[0,"#BFBFBF"],[0.5,"#2E75B6"],[1,"#1F4E78"]], range_color=[0,100])
-    fig.update_layout(plot_bgcolor="white",paper_bgcolor="white",height=260,
+    fig_rs_pct.update_layout(plot_bgcolor="white",paper_bgcolor="white",height=260,
         margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12),
         coloraxis_showscale=False,yaxis=dict(range=[0,110],ticksuffix="%"))
-    fig.update_traces(textposition="outside",textfont_size=11)
-    st.plotly_chart(fig, use_container_width=True)
+    fig_rs_pct.update_traces(textposition="outside",textfont_size=11)
+    st.plotly_chart(fig_rs_pct, use_container_width=True, key="rs_done_pct")
 
     # Summary table
     st.markdown('<div class="section-header">📋 Summary by Material & Size</div>', unsafe_allow_html=True)
@@ -695,45 +695,45 @@ with tab_lv7:
         with col1:
             st.markdown('<div class="section-header">📊 Receiving Status by Item</div>', unsafe_allow_html=True)
             d = df_lv7.groupby(["Riser","Receiving Status"]).size().reset_index(name="Count")
-            fig = px.bar(d, x="Riser", y="Count", color="Receiving Status",
+            fig_lv7_rv_bar = px.bar(d, x="Riser", y="Count", color="Receiving Status",
                 color_discrete_map={"Received":"#70AD47","Shortage":"#C00000","":"#BFBFBF"},
                 text="Count", barmode="stack")
-            fig.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
+            fig_lv7_rv_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
                 height=300,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=11),xaxis_tickangle=-45)
-            fig.update_traces(textposition="inside",textfont_size=9)
-            st.plotly_chart(fig, use_container_width=True)
+            fig_lv7_rv_bar.update_traces(textposition="inside",textfont_size=9)
+            st.plotly_chart(fig_lv7_rv_bar, use_container_width=True, key="lv7_recv_bar")
         with col2:
             st.markdown('<div class="section-header">📐 Dwg Status by Item</div>', unsafe_allow_html=True)
             d = df_lv7.groupby(["Riser","Dwg Status"]).size().reset_index(name="Count")
-            fig = px.bar(d, x="Riser", y="Count", color="Dwg Status",
+            fig_lv7_dg_bar = px.bar(d, x="Riser", y="Count", color="Dwg Status",
                 color_discrete_map={"Approved":"#375623","Wait for Approved":"#FFC000","":"#BFBFBF"},
                 text="Count", barmode="stack")
-            fig.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
+            fig_lv7_dg_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
                 height=300,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=11),xaxis_tickangle=-45)
-            fig.update_traces(textposition="inside",textfont_size=9)
-            st.plotly_chart(fig, use_container_width=True)
+            fig_lv7_dg_bar.update_traces(textposition="inside",textfont_size=9)
+            st.plotly_chart(fig_lv7_dg_bar, use_container_width=True, key="lv7_dwg_bar")
 
         col3, col4 = st.columns(2)
         with col3:
             st.markdown('<div class="section-header">🥧 Overall — Receiving</div>', unsafe_allow_html=True)
-            fig = go.Figure(go.Pie(
+            fig_lv7_rv_pie = go.Figure(go.Pie(
                 labels=["Received","Shortage","Not Updated"],
                 values=[_rv7,_sh7,(_t7-_rv7-_sh7)],
                 hole=.55, marker_colors=["#70AD47","#C00000","#BFBFBF"],
                 textinfo="label+percent",textfont_size=11))
-            fig.update_layout(showlegend=False,height=260,margin=dict(t=10,b=10,l=10,r=10),
+            fig_lv7_rv_pie.update_layout(showlegend=False,height=260,margin=dict(t=10,b=10,l=10,r=10),
                 annotations=[dict(text=f"{_pr7:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_lv7_rv_pie, use_container_width=True, key="lv7_recv_pie")
         with col4:
             st.markdown('<div class="section-header">🥧 Overall — Dwg</div>', unsafe_allow_html=True)
-            fig = go.Figure(go.Pie(
+            fig_lv7_dg_pie = go.Figure(go.Pie(
                 labels=["Approved","Wait for Approved","Not Updated"],
                 values=[_da7,_dw7,(_t7-_da7-_dw7)],
                 hole=.55, marker_colors=["#375623","#FFC000","#BFBFBF"],
                 textinfo="label+percent",textfont_size=11))
-            fig.update_layout(showlegend=False,height=260,margin=dict(t=10,b=10,l=10,r=10),
+            fig_lv7_dg_pie.update_layout(showlegend=False,height=260,margin=dict(t=10,b=10,l=10,r=10),
                 annotations=[dict(text=f"{_pg7:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_lv7_dg_pie, use_container_width=True, key="lv7_dwg_pie")
 
         # Summary table
         st.markdown('<div class="section-header">📋 Summary by Material & Size</div>', unsafe_allow_html=True)
