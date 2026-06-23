@@ -515,6 +515,9 @@ tab_rs, tab_lv7 = st.tabs(["📦 RS Risers (RS1–RS8)", "🏗️ Level 7 Items"
 
 # ══════════════════════════════ RS TAB ══════════════════════════════════════
 with tab_rs:
+  if len(df_rs) == 0:
+    st.info("ไม่มีข้อมูล RS ตาม Filter ที่เลือก — ลองเปลี่ยน Riser filter เป็น ALL หรือเลือก RS ครับ")
+  else:
     _t = len(df_rs)
     _recv = (df_rs["Receiving Status"]=="Received").sum()
     _shrt = (df_rs["Receiving Status"]=="Shortage").sum()
