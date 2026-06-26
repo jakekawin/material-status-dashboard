@@ -336,8 +336,6 @@ with st.sidebar:
     sel_riser  = st.selectbox("Riser",  ["ALL"] + _risers)
     sel_system = st.selectbox("System", ["ALL"] + _systems)
     sel_recv   = st.selectbox("Receiving Status", ["ALL","Received","Shortage","Blank"])
-    sel_work   = st.selectbox("Work Status",      ["ALL","Done","Pending","Blank"])
-    sel_dwg    = st.selectbox("Dwg Status",       ["ALL","Approved","Wait for Approved","Blank"])
 
     st.markdown("---")
 
@@ -397,16 +395,6 @@ if sel_recv != "ALL":
         df = df[df["Receiving Status"] == ""]
     else:
         df = df[df["Receiving Status"] == sel_recv]
-if sel_work != "ALL":
-    if sel_work == "Blank":
-        df = df[df["Work Status"] == ""]
-    else:
-        df = df[df["Work Status"] == sel_work]
-if sel_dwg != "ALL":
-    if sel_dwg == "Blank":
-        df = df[df["Dwg Status"] == ""]
-    else:
-        df = df[df["Dwg Status"] == sel_dwg]
 
 # ─── SPLIT RS vs LV7 ────────────────────────────────────────────────────────
 df_rs  = df[df["Riser"].str.startswith("RS",    na=False)]
@@ -521,24 +509,15 @@ with tab_rs:
     _t = len(df_rs)
     _recv = (df_rs["Receiving Status"]=="Received").sum()
     _shrt = (df_rs["Receiving Status"]=="Shortage").sum()
-    _done = (df_rs["Work Status"]=="Done").sum()
-    _pend = (df_rs["Work Status"]=="Pending").sum()
-    _dapp = (df_rs["Dwg Status"]=="Approved").sum()
-    _dwat = (df_rs["Dwg Status"]=="Wait for Approved").sum()
+    _blank = _t - _recv - _shrt
     _pr = _recv/_t*100 if _t else 0
-    _pd = _done/_t*100 if _t else 0
-    _pdwg = _dapp/_t*100 if _t else 0
 
-    c1,c2,c3,c4,c5,c6,c7,c8 = st.columns(8)
+    c1,c2,c3,c4 = st.columns(4)
     for col, label, value, color, bg in [
-        (c1,"Total Items",_t,         "#1F4E78","#DEEAF1"),
-        (c2,"Received",   _recv,      "#375623","#E2EFDA"),
-        (c3,"Shortage",   _shrt,      "#C00000","#FCE4D6"),
-        (c4,"Done",       _done,      "#2E75B6","#BDD7EE"),
-        (c5,"% Received", f"{_pr:.1f}%","#7F5A00","#FFF0D0"),
-        (c6,"% Done",     f"{_pd:.1f}%","#2E75B6","#DEEAF1"),
-        (c7,"Dwg Approved",_dapp,     "#375623","#E2EFDA"),
-        (c8,"Dwg Wait",   _dwat,      "#C00000","#FCE4D6"),
+        (c1,"Total Items", _t,             "#1F4E78","#DEEAF1"),
+        (c2,"Received",    _recv,          "#375623","#E2EFDA"),
+        (c3,"Shortage",    _shrt,          "#C00000","#FCE4D6"),
+        (c4,"% Received",  f"{_pr:.1f}%", "#7F5A00","#FFF0D0"),
     ]:
         with col:
             st.markdown(f"""<div class="kpi-card" style="border-left-color:{color};background:{bg}">
@@ -570,83 +549,19 @@ with tab_rs:
             annotations=[dict(text=f"{_pr:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
         st.plotly_chart(fig_rs_rv_pie, use_container_width=True, key="rs_recv_pie")
 
-    # Charts row 2: Work
-    col3, col4 = st.columns(2)
-    with col3:
-        st.markdown('<div class="section-header">🔧 Work Status by Riser</div>', unsafe_allow_html=True)
-        d = df_rs.groupby(["Riser","Work Status"]).size().reset_index(name="Count")
-        fig_rs_wk_bar = px.bar(d, x="Riser", y="Count", color="Work Status",
-            color_discrete_map={"Done":"#2E75B6","Pending":"#FFC000","":"#BFBFBF"},
-            text="Count", barmode="stack")
-        fig_rs_wk_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
-            height=280,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12))
-        fig_rs_wk_bar.update_traces(textposition="inside",textfont_size=10)
-        st.plotly_chart(fig_rs_wk_bar, use_container_width=True, key="rs_work_bar")
-    with col4:
-        st.markdown('<div class="section-header">🥧 Overall — Work</div>', unsafe_allow_html=True)
-        fig_rs_wk_pie = go.Figure(go.Pie(
-            labels=["Done","Pending","Not Updated"],
-            values=[_done,_pend,(_t-_done-_pend)],
-            hole=.55, marker_colors=["#2E75B6","#FFC000","#BFBFBF"],
-            textinfo="label+percent",textfont_size=11))
-        fig_rs_wk_pie.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
-            annotations=[dict(text=f"{_pd:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-        st.plotly_chart(fig_rs_wk_pie, use_container_width=True, key="rs_work_pie")
-
-    # Charts row 3: Dwg
-    col5, col6 = st.columns(2)
-    with col5:
-        st.markdown('<div class="section-header">📐 Dwg Status by Riser</div>', unsafe_allow_html=True)
-        d = df_rs.groupby(["Riser","Dwg Status"]).size().reset_index(name="Count")
-        fig_rs_dg_bar = px.bar(d, x="Riser", y="Count", color="Dwg Status",
-            color_discrete_map={"Approved":"#375623","Wait for Approved":"#FFC000","":"#BFBFBF"},
-            text="Count", barmode="stack")
-        fig_rs_dg_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
-            height=280,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12))
-        fig_rs_dg_bar.update_traces(textposition="inside",textfont_size=10)
-        st.plotly_chart(fig_rs_dg_bar, use_container_width=True, key="rs_dwg_bar")
-    with col6:
-        st.markdown('<div class="section-header">🥧 Overall — Dwg</div>', unsafe_allow_html=True)
-        fig_rs_dg_pie = go.Figure(go.Pie(
-            labels=["Approved","Wait for Approved","Not Updated"],
-            values=[_dapp,_dwat,(_t-_dapp-_dwat)],
-            hole=.55, marker_colors=["#375623","#FFC000","#BFBFBF"],
-            textinfo="label+percent",textfont_size=11))
-        fig_rs_dg_pie.update_layout(showlegend=False,height=280,margin=dict(t=10,b=10,l=10,r=10),
-            annotations=[dict(text=f"{_pdwg:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-        st.plotly_chart(fig_rs_dg_pie, use_container_width=True, key="rs_dwg_pie")
-
-    # % Done bar
-    st.markdown('<div class="section-header">📊 % Done by Riser</div>', unsafe_allow_html=True)
-    dbr = df_rs.groupby("Riser").apply(
-        lambda x: round((x["Work Status"]=="Done").sum()/len(x)*100,1)
-    ).reset_index(name="% Done").sort_values("Riser")
-    fig_rs_pct = px.bar(dbr, x="Riser", y="% Done",
-        text=dbr["% Done"].apply(lambda v: f"{v:.1f}%"),
-        color="% Done", color_continuous_scale=[[0,"#BFBFBF"],[0.5,"#2E75B6"],[1,"#1F4E78"]], range_color=[0,100])
-    fig_rs_pct.update_layout(plot_bgcolor="white",paper_bgcolor="white",height=260,
-        margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=12),
-        coloraxis_showscale=False,yaxis=dict(range=[0,110],ticksuffix="%"))
-    fig_rs_pct.update_traces(textposition="outside",textfont_size=11)
-    st.plotly_chart(fig_rs_pct, use_container_width=True, key="rs_done_pct")
-
     # Summary table
     st.markdown('<div class="section-header">📋 Summary by Material & Size</div>', unsafe_allow_html=True)
     smry = df_rs.groupby(["Material","Size"]).agg(
         Total=("ITEM No.","count"),
         Received=("Receiving Status",lambda x:(x=="Received").sum()),
         Shortage=("Receiving Status",lambda x:(x=="Shortage").sum()),
-        Done=("Work Status",lambda x:(x=="Done").sum()),
-        Pending=("Work Status",lambda x:(x=="Pending").sum()),
-        Dwg_Approved=("Dwg Status",lambda x:(x=="Approved").sum()),
-        Dwg_Wait=("Dwg Status",lambda x:(x=="Wait for Approved").sum()),
+        Not_Updated=("Receiving Status",lambda x:(x=="").sum()),
     ).reset_index()
     smry = smry[smry["Total"]>0]
-    smry.columns = ["Material","Size","Total","Received","Shortage","Done","Pending","Dwg Approved","Dwg Wait"]
+    smry.columns = ["Material","Size","Total","Received","Shortage","Not Updated"]
     st.dataframe(
         smry.style.map(color_shortage,subset=["Shortage"])
-                  .map(color_received,subset=["Received","Dwg Approved"])
-                  .map(color_done,subset=["Done"])
+                  .map(color_received,subset=["Received"])
                   .set_properties(**{"text-align":"center"})
                   .set_table_styles([{"selector":"th","props":[("background","#1F4E78"),("color","white"),("font-weight","bold"),("text-align","center")]}]),
         use_container_width=True, height=350)
@@ -667,24 +582,14 @@ with tab_lv7:
         _t7 = len(df_lv7)
         _rv7 = (df_lv7["Receiving Status"]=="Received").sum()
         _sh7 = (df_lv7["Receiving Status"]=="Shortage").sum()
-        _dn7 = (df_lv7["Work Status"]=="Done").sum()
-        _pn7 = (df_lv7["Work Status"]=="Pending").sum()
-        _da7 = (df_lv7["Dwg Status"]=="Approved").sum()
-        _dw7 = (df_lv7["Dwg Status"]=="Wait for Approved").sum()
         _pr7 = _rv7/_t7*100 if _t7 else 0
-        _pd7 = _dn7/_t7*100 if _t7 else 0
-        _pg7 = _da7/_t7*100 if _t7 else 0
 
-        c1,c2,c3,c4,c5,c6,c7,c8 = st.columns(8)
+        c1,c2,c3,c4 = st.columns(4)
         for col, label, value, color, bg in [
-            (c1,"Total Items",_t7,          "#1F4E78","#DEEAF1"),
-            (c2,"Received",   _rv7,         "#375623","#E2EFDA"),
-            (c3,"Shortage",   _sh7,         "#C00000","#FCE4D6"),
-            (c4,"Done",       _dn7,         "#2E75B6","#BDD7EE"),
-            (c5,"% Received", f"{_pr7:.1f}%","#7F5A00","#FFF0D0"),
-            (c6,"% Done",     f"{_pd7:.1f}%","#2E75B6","#DEEAF1"),
-            (c7,"Dwg Approved",_da7,        "#375623","#E2EFDA"),
-            (c8,"Dwg Wait",   _dw7,         "#C00000","#FCE4D6"),
+            (c1,"Total Items", _t7,            "#1F4E78","#DEEAF1"),
+            (c2,"Received",    _rv7,           "#375623","#E2EFDA"),
+            (c3,"Shortage",    _sh7,           "#C00000","#FCE4D6"),
+            (c4,"% Received",  f"{_pr7:.1f}%","#7F5A00","#FFF0D0"),
         ]:
             with col:
                 st.markdown(f"""<div class="kpi-card" style="border-left-color:{color};background:{bg}">
@@ -706,37 +611,15 @@ with tab_lv7:
             fig_lv7_rv_bar.update_traces(textposition="inside",textfont_size=9)
             st.plotly_chart(fig_lv7_rv_bar, use_container_width=True, key="lv7_recv_bar")
         with col2:
-            st.markdown('<div class="section-header">📐 Dwg Status by Item</div>', unsafe_allow_html=True)
-            d = df_lv7.groupby(["Riser","Dwg Status"]).size().reset_index(name="Count")
-            fig_lv7_dg_bar = px.bar(d, x="Riser", y="Count", color="Dwg Status",
-                color_discrete_map={"Approved":"#375623","Wait for Approved":"#FFC000","":"#BFBFBF"},
-                text="Count", barmode="stack")
-            fig_lv7_dg_bar.update_layout(plot_bgcolor="white",paper_bgcolor="white",legend_title_text="",
-                height=300,margin=dict(t=10,b=10,l=10,r=10),font=dict(family="Calibri",size=11),xaxis_tickangle=-45)
-            fig_lv7_dg_bar.update_traces(textposition="inside",textfont_size=9)
-            st.plotly_chart(fig_lv7_dg_bar, use_container_width=True, key="lv7_dwg_bar")
-
-        col3, col4 = st.columns(2)
-        with col3:
             st.markdown('<div class="section-header">🥧 Overall — Receiving</div>', unsafe_allow_html=True)
             fig_lv7_rv_pie = go.Figure(go.Pie(
                 labels=["Received","Shortage","Not Updated"],
                 values=[_rv7,_sh7,(_t7-_rv7-_sh7)],
                 hole=.55, marker_colors=["#70AD47","#C00000","#BFBFBF"],
                 textinfo="label+percent",textfont_size=11))
-            fig_lv7_rv_pie.update_layout(showlegend=False,height=260,margin=dict(t=10,b=10,l=10,r=10),
+            fig_lv7_rv_pie.update_layout(showlegend=False,height=300,margin=dict(t=10,b=10,l=10,r=10),
                 annotations=[dict(text=f"{_pr7:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
             st.plotly_chart(fig_lv7_rv_pie, use_container_width=True, key="lv7_recv_pie")
-        with col4:
-            st.markdown('<div class="section-header">🥧 Overall — Dwg</div>', unsafe_allow_html=True)
-            fig_lv7_dg_pie = go.Figure(go.Pie(
-                labels=["Approved","Wait for Approved","Not Updated"],
-                values=[_da7,_dw7,(_t7-_da7-_dw7)],
-                hole=.55, marker_colors=["#375623","#FFC000","#BFBFBF"],
-                textinfo="label+percent",textfont_size=11))
-            fig_lv7_dg_pie.update_layout(showlegend=False,height=260,margin=dict(t=10,b=10,l=10,r=10),
-                annotations=[dict(text=f"{_pg7:.0f}%",x=0.5,y=0.5,font_size=28,font_color="#1F4E78",font_family="Calibri",showarrow=False)])
-            st.plotly_chart(fig_lv7_dg_pie, use_container_width=True, key="lv7_dwg_pie")
 
         # Summary table
         st.markdown('<div class="section-header">📋 Summary by Material & Size</div>', unsafe_allow_html=True)
@@ -744,17 +627,13 @@ with tab_lv7:
             Total=("ITEM No.","count"),
             Received=("Receiving Status",lambda x:(x=="Received").sum()),
             Shortage=("Receiving Status",lambda x:(x=="Shortage").sum()),
-            Done=("Work Status",lambda x:(x=="Done").sum()),
-            Pending=("Work Status",lambda x:(x=="Pending").sum()),
-            Dwg_Approved=("Dwg Status",lambda x:(x=="Approved").sum()),
-            Dwg_Wait=("Dwg Status",lambda x:(x=="Wait for Approved").sum()),
+            Not_Updated=("Receiving Status",lambda x:(x=="").sum()),
         ).reset_index()
         smry7 = smry7[smry7["Total"]>0]
-        smry7.columns = ["Material","Size","Total","Received","Shortage","Done","Pending","Dwg Approved","Dwg Wait"]
+        smry7.columns = ["Material","Size","Total","Received","Shortage","Not Updated"]
         st.dataframe(
             smry7.style.map(color_shortage,subset=["Shortage"])
-                       .map(color_received,subset=["Received","Dwg Approved"])
-                       .map(color_done,subset=["Done"])
+                       .map(color_received,subset=["Received"])
                        .set_properties(**{"text-align":"center"})
                        .set_table_styles([{"selector":"th","props":[("background","#1F4E78"),("color","white"),("font-weight","bold"),("text-align","center")]}]),
             use_container_width=True, height=350)
