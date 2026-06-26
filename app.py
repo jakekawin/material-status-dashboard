@@ -279,15 +279,13 @@ def generate_excel_report(df: pd.DataFrame, summary_df: pd.DataFrame) -> bytes:
     return output.getvalue()
 
 
-def save_row(row_index: int, recv_status: str, work_status: str, dwg_status: str = ""):
-    """Update one row in Google Sheets (1-indexed, +2 for header+1-based)."""
+def save_row(row_index: int, recv_status: str):
+    """Update Receiving Status only (Work/Dwg handled on separate page)."""
     gc = get_gc()
     sh = gc.open(SHEET_NAME)
     ws = sh.worksheet("Data")
     sheet_row = row_index + 2
     ws.update_cell(sheet_row, 6, recv_status)
-    ws.update_cell(sheet_row, 7, work_status)
-    ws.update_cell(sheet_row, 8, dwg_status)
     load_data.clear()
 
 
@@ -450,41 +448,35 @@ report_placeholder.download_button(
 # ─── EXPANDER HELPER (defined before tabs) ───────────────────────────────────
 def _render_group_expander(riser, system, df_grp):
     """Render a single group expander (view + edit modes)."""
-    done_cnt = (df_grp["Work Status"] == "Done").sum()
     recv_cnt = (df_grp["Receiving Status"] == "Received").sum()
-    dwg_cnt  = (df_grp["Dwg Status"] == "Approved").sum()
+    shrt_cnt = (df_grp["Receiving Status"] == "Shortage").sum()
     title    = f"{riser}-{system}" if system else riser
-    lbl = f"{title}  ·  {recv_cnt}/{len(df_grp)} received  ·  {done_cnt}/{len(df_grp)} done  ·  {dwg_cnt}/{len(df_grp)} dwg approved"
+    lbl = f"{title}  ·  {recv_cnt}/{len(df_grp)} received  ·  {shrt_cnt} shortage"
     with st.expander(lbl):
+        display_cols = ["ITEM No.","Size","Material","Receiving Status"]
         if st.session_state.authenticated:
             st.info("✏️ Edit Mode — เลือก row แล้วแก้ไขด้านล่าง")
-            display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
             st.dataframe(df_grp[display_cols].reset_index(drop=True), use_container_width=True, height=200)
             safe_riser = riser.replace("-","_")
             safe_key   = system.replace("-","_").replace(".","_") if system else "grp"
             with st.form(f"edit_{safe_riser}_{safe_key}"):
                 st.markdown(f"**แก้ไข {title}:**")
-                ec1, ec2, ec3, ec4 = st.columns(4)
+                ec1, ec2 = st.columns(2)
                 with ec1: sel_item = st.selectbox("Item No.", df_grp["ITEM No."].tolist())
                 with ec2: new_recv = st.selectbox("Receiving Status", ["","Received","Shortage"])
-                with ec3: new_work = st.selectbox("Work Status", ["","Done","Pending"])
-                with ec4: new_dwg  = st.selectbox("Dwg Status", ["","Approved","Wait for Approved"])
                 if st.form_submit_button("💾 Save", type="primary", use_container_width=True):
                     mask = (df_all["Riser"]==riser) & (df_all["System"]==system) & (df_all["ITEM No."].astype(str)==str(sel_item))
                     idx = df_all[mask].index
                     if len(idx) > 0:
-                        save_row(int(idx[0]), new_recv, new_work, new_dwg)
+                        save_row(int(idx[0]), new_recv)
                         st.success(f"✓ บันทึกแล้ว: {title} Item {sel_item}")
                         time.sleep(1)
                         st.rerun()
         else:
-            display_cols = ["ITEM No.","Size","Material","Receiving Status","Work Status","Dwg Status"]
             def highlight_row(row):
                 recv = row.get("Receiving Status","")
-                work = row.get("Work Status","")
-                if recv == "Shortage":   return ["background-color:#FCE4D6"] * len(row)
-                if recv == "Received" and work == "Done": return ["background-color:#E2EFDA"] * len(row)
-                if recv == "Received":   return ["background-color:#EBF3E8"] * len(row)
+                if recv == "Shortage": return ["background-color:#FCE4D6"] * len(row)
+                if recv == "Received": return ["background-color:#E2EFDA"] * len(row)
                 return [""] * len(row)
             disp = df_grp[display_cols].reset_index(drop=True)
             st.dataframe(disp.style.apply(highlight_row, axis=1),
