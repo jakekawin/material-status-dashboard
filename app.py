@@ -211,10 +211,8 @@ def validate_and_diff(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> tuple:
     if only_sheet:
         warnings.append(f"⚠️ {len(only_sheet)} items ใน Sheet ที่ไม่มีใน Excel (จะไม่ถูกแตะต้อง)")
 
-    # Diff: merge on key
-    status_cols = ["Receiving Status","Work Status","Dwg Status"]
-    # only use cols that exist in both
-    status_cols = [c for c in status_cols if c in df_sheet.columns and c in df_excel.columns]
+    # Diff: merge on key — only Receiving Status (Work/Dwg handled on separate page)
+    status_cols = ["Receiving Status"]
 
     merged = df_sheet[key + status_cols].merge(
         df_excel[key + status_cols],
@@ -247,9 +245,8 @@ def do_import(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> int:
     df_sheet_idx = df_sheet[key].copy()
     df_sheet_idx["_idx"] = df_sheet_idx.index
 
-    import_cols = ["Receiving Status","Work Status"]
-    if "Dwg Status" in df_excel.columns:
-        import_cols.append("Dwg Status")
+    # Import only Receiving Status — Work/Dwg handled on separate page
+    import_cols = ["Receiving Status"]
 
     merged = df_sheet_idx.merge(
         df_excel[key + import_cols],
@@ -259,13 +256,9 @@ def do_import(df_sheet: pd.DataFrame, df_excel: pd.DataFrame) -> int:
     updates = []
     for _, row in merged.iterrows():
         gsheet_row = int(row["_idx"]) + 2
-        values = [row["Receiving Status"], row["Work Status"]]
-        if "Dwg Status" in import_cols:
-            values.append(row["Dwg Status"])
-        col_end = "H" if "Dwg Status" in import_cols else "G"
         updates.append({
-            "range": f"F{gsheet_row}:{col_end}{gsheet_row}",
-            "values": [values]
+            "range": f"F{gsheet_row}",
+            "values": [[row["Receiving Status"]]]
         })
 
     for i in range(0, len(updates), 100):   # batch in chunks of 100
@@ -646,7 +639,7 @@ with tab_lv7:
 
 # ─── IMPORT FROM EXCEL ───────────────────────────────────────────────────────
 if st.session_state.authenticated:
-    st.markdown('<div class="section-header">📤 Import จาก Excel (อัพเดต Receiving/Work Status)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📤 Import จาก Excel (อัพเดต Receiving Status)</div>', unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader(
         "อัพโหลดไฟล์ Excel (ต้องมี sheet: RS1-2, RS3-4, RS5-6, RS7-8)",
@@ -675,7 +668,7 @@ if st.session_state.authenticated:
             if len(changes_df) == 0:
                 st.success("✅ ข้อมูลตรงกันทั้งหมด — ไม่มีการเปลี่ยนแปลง")
             else:
-                st.info(f"พบ **{len(changes_df)} รายการ** ที่ Receiving Status หรือ Work Status เปลี่ยนแปลง:")
+                st.info(f"พบ **{len(changes_df)} รายการ** ที่ Receiving Status เปลี่ยนแปลง:")
                 st.dataframe(changes_df, use_container_width=True, height=min(350, len(changes_df)*36+50))
 
                 st.warning("⚠️ กด **ยืนยัน Import** เพื่ออัพเดต Google Sheets — ไม่สามารถ undo ได้")
